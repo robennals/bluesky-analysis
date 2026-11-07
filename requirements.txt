@@ -1,0 +1,5 @@
+numpy
+scikit-learn
+scipy
+model2vec
+Pillow
