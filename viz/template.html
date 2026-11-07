@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What's on Bluesky</title>
+<style>
+.viz-root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --series-1: #2a78d6; --series-2: #eb6834; --deemph: #c3c2b7;
+  --div-neg-2: #e34948; --div-neg-1: #f0a8a7; --div-mid: #f0efec; --div-pos-1: #9ec5f4; --div-pos-2: #2a78d6;
+  --seq-0: #f0efec; --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #6da7ec; --seq-4: #3987e5; --seq-5: #256abf; --seq-6: #184f95;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface-1: #1a1a19;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5; --series-2: #d95926; --deemph: #4a4a46;
+    --div-neg-2: #e66767; --div-neg-1: #7a3a39; --div-mid: #383835; --div-pos-1: #1c5cab; --div-pos-2: #3987e5;
+    --seq-0: #262624; --seq-1: #104281; --seq-2: #184f95; --seq-3: #1c5cab; --seq-4: #256abf; --seq-5: #3987e5; --seq-6: #6da7ec;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+.viz-root { background: var(--page); color: var(--text-primary); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 32px 20px 80px; min-height: 100vh; }
+main { max-width: 1320px; margin: 0 auto; }
+h1 { font-size: 30px; margin: 0 0 6px; font-weight: 650; }
+h2 { font-size: 21px; margin: 48px 0 6px; font-weight: 620; }
+h3 { font-size: 15px; margin: 0 0 4px; font-weight: 600; }
+p, li { color: var(--text-secondary); max-width: 760px; }
+.lede { font-size: 17px; color: var(--text-secondary); max-width: 820px; }
+a { color: inherit; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+
+.stack > .card { margin-bottom: 16px; }
+.viz-row { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr); gap: 24px; align-items: start; }
+.viz-row > * { min-width: 0; }
+/* The drawer takes its height from the chart beside it (size containment means it can't stretch the row itself). */
+.viz-row > .drawer { margin: 0; border-top: 0; padding: 0 0 0 22px; border-left: 1px solid var(--grid); align-self: stretch; contain: size; }
+.drawer-inner { display: flex; flex-direction: column; position: sticky; top: 12px; height: min(100%, calc(100vh - 24px)); min-height: 0; }
+.drawer-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 8px; overscroll-behavior: contain; }
+@media (max-width: 900px) { .viz-row { grid-template-columns: 1fr; } .viz-row > .drawer { contain: none; padding: 12px 0 0; border-left: 0; border-top: 1px solid var(--grid); } .drawer-inner { position: static; height: 420px; } }
+.hero-line { font-size: 19px; font-weight: 600; color: var(--text-primary); margin: 12px 0 8px; max-width: none; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 24px 0 8px; }
+.kpi .label { color: var(--text-secondary); font-size: 13px; }
+.kpi .value { font-size: 28px; font-weight: 620; margin-top: 2px; }
+.kpi .sub { color: var(--text-muted); font-size: 12px; }
+.note { color: var(--text-muted); font-size: 12.5px; margin-top: 8px; }
+svg text { fill: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+svg .lbl { fill: var(--text-secondary); font-size: 12px; font-variant-numeric: normal; }
+svg .strong { fill: var(--text-primary); font-weight: 600; }
+.legend { display: flex; gap: 16px; font-size: 13px; color: var(--text-secondary); margin: 4px 0 10px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+#tip { position: fixed; pointer-events: none; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; box-shadow: 0 4px 16px rgba(0,0,0,.12); max-width: 320px; display: none; z-index: 10; color: var(--text-secondary); }
+#tip b { color: var(--text-primary); font-size: 14px; }
+.cat-row { cursor: pointer; }
+.cat-row:hover rect.hit, .cat-row:focus rect.hit { fill: var(--grid); }
+.cat-row:focus { outline: none; }
+.sub-panel { margin-top: 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; color: var(--text-muted); font-weight: 500; border-bottom: 1px solid var(--axis); padding: 6px 8px; }
+td { border-bottom: 1px solid var(--grid); padding: 6px 8px; vertical-align: top; color: var(--text-secondary); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .bar { display: inline-block; height: 8px; border-radius: 0 3px 3px 0; vertical-align: 1px; }
+.samples { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px; }
+@media (max-width: 760px) { .samples { grid-template-columns: 1fr; } }
+.sample { font-size: 12.5px; border-left: 2px solid var(--grid); padding: 2px 0 2px 8px; margin: 6px 0; color: var(--text-secondary); overflow-wrap: anywhere; }
+.sample a { color: var(--text-muted); text-decoration: none; font-size: 11.5px; }
+.sample a:hover { text-decoration: underline; }
+.drawer { margin-top: 14px; border-top: 1px solid var(--grid); padding-top: 12px; }
+.drawer-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.drawer-title { font-weight: 600; font-size: 13.5px; color: var(--text-primary); }
+.ex { font-size: 12.5px; border-left: 2px solid var(--grid); padding: 2px 0 2px 8px; margin: 9px 0; color: var(--text-secondary); overflow-wrap: anywhere; }
+.ex img { display: block; max-width: 100%; max-height: 170px; border-radius: 6px; margin: 4px 0; }
+.ex .by, .ex .by a { color: var(--text-muted); font-size: 11.5px; text-decoration: none; }
+.ex .by a:hover { text-decoration: underline; }
+.ex .tag { color: var(--text-muted); font-style: italic; }
+.thread { border-left: 2px solid var(--axis); padding-left: 8px; margin: 2px 0 6px; }
+.ctx { font-size: 12px; color: var(--text-muted); margin: 3px 0 6px; }
+.ctx img { max-height: 90px; }
+.quoted { border: 1px solid var(--grid); border-radius: 6px; padding: 5px 8px; margin: 4px 0; }
+.acct-row { cursor: pointer; border-radius: 0 6px 6px 0; }
+.acct-row:hover, .acct-row:focus { background: var(--grid); outline: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chips button { font: inherit; font-size: 12.5px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+.chips button[aria-pressed="true"] { border-color: var(--series-1); color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--series-1); }
+tr.pick { cursor: pointer; }
+tr.pick:hover td { background: var(--page); }
+tr.pick[aria-selected="true"] td { background: var(--grid); }
+.clickbar { cursor: pointer; }
+details > summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; margin-top: 10px; }
+.comm-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 860px) { .comm-layout { grid-template-columns: 1fr; } }
+.comm-list { margin-bottom: 12px; }
+.comm-group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--grid); }
+.comm-group:last-child { border-bottom: 0; }
+.umbrella { border: 1px solid var(--axis); border-radius: 10px; padding: 10px 12px 2px; margin-bottom: 8px; }
+.comm-list button.top { font-size: 14px; padding: 5px 13px; }
+.comm-list button.parent { font-weight: 620; color: var(--text-primary); background: var(--page); }
+.comm-list button { font: inherit; font-size: 12.5px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.comm-list button[aria-pressed="true"] { border-color: var(--series-1); color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--series-1); }
+.acct { font-size: 12.5px; margin: 3px 0; color: var(--text-secondary); }
+.acct a { color: var(--text-primary); text-decoration: none; font-weight: 550; }
+.pill { font-size: 11px; color: var(--text-muted); }
+.toggle { font: inherit; font-size: 12.5px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+.toggle[aria-pressed="true"] { color: var(--text-primary); border-color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="viz-root"><main>
+<h1>What's on Bluesky</h1>
+<p class="lede" id="lede"></p>
+<div class="kpis" id="kpis"></div>
+<p class="note">Everything below the language section is English: posts tagged English, and accounts where at least half their sampled posts are English. Every chart has something selected, with a random sample of real posts or accounts beneath it. Click to change the selection, or Reshuffle for a new draw. Images from posts with an adult label are hidden.</p>
+
+<h2>How big is Bluesky?</h2>
+<p>Compared with other social networks. Bluesky is in blue, on a plain linear scale.</p>
+<div class="card viz-row"><div>
+  <div class="chips" id="scaleToggle" role="group" aria-label="What to compare"></div>
+  <p class="hero-line" id="scaleHero"></p>
+  <div id="scaleChart"></div>
+  <p class="note" id="scaleNote"></p>
+</div><div id="scaleD" class="drawer"></div></div>
+
+<h2>Languages</h2>
+<p id="langText"></p>
+<div class="card viz-row"><div>
+  <div class="legend"><span><i style="background:var(--series-1)"></i>Share of posts</span><span><i style="background:var(--series-2)"></i>Share of likes</span></div>
+  <div id="langChart"></div>
+</div><div id="langD" class="drawer"></div></div>
+
+<h2>Like all broadcast social media, a few accounts capture most of the attention</h2>
+<p id="attIntro"></p>
+<div class="card viz-row"><div>
+  <div class="chips" id="attToggle" role="group" aria-label="What to measure"></div>
+  <p class="hero-line" id="attHero"></p>
+  <div id="attCurve"></div>
+  <p class="note" id="attNote"></p>
+</div><div id="attD" class="drawer"></div></div>
+
+<section id="compareSection">
+<h2>Who gets the attention, and how they differ</h2>
+<p id="cmpIntro"></p>
+<div class="stack">
+  <div class="card viz-row"><div>
+    <h3>The top 1% of active accounts compared with the rest</h3>
+    <div id="cmpTable"></div>
+    <p class="note" id="cmpNote"></p>
+  </div><div id="cmpD" class="drawer"></div></div>
+  <div class="card viz-row"><div>
+    <div class="legend"><span><i style="background:var(--series-1)"></i>Other 90% of active accounts</span><span><i style="background:var(--series-2)"></i>Top 1% of active accounts</span></div>
+    <div class="chips" id="mixToggle" role="group" aria-label="What to compare"></div>
+    <h3 style="margin-top:12px" id="mixTitle"></h3>
+    <div id="mixChart"></div>
+  </div><div id="mixD" class="drawer"></div></div>
+</div>
+
+<section id="topicsSection">
+<h2>What's posted vs. what's liked</h2>
+<p>Each category's share of English posts (what people write) and of likes (what people read and endorse). Click any category or subtopic: random real posts from it appear below.</p>
+<div class="card viz-row"><div>
+  <div class="legend"><span><i style="background:var(--series-1)"></i>Share of posts</span><span><i style="background:var(--series-2)"></i>Share of likes</span></div>
+  <div id="catChart"></div>
+  <div id="catPanel" class="sub-panel"></div>
+  <details><summary>Show all categories as a table</summary><div id="catTable"></div></details>
+</div><div id="catD" class="drawer"></div></div>
+</section>
+</section>
+
+<h2>Who the most influential accounts are, and what they talk about</h2>
+<p id="cliqueText"></p>
+<div class="card viz-row"><div>
+  <div class="legend" id="cliqueLegend"></div>
+  <div id="cliqueChart"></div>
+  <p class="note" id="cliqueNote"></p>
+</div><div id="cliqueD" class="drawer"></div></div>
+
+<h2>What people actually like</h2>
+<p id="rlText"></p>
+<div class="card viz-row"><div>
+  <div class="legend" id="rlLegend"></div>
+  <div id="rlChart"></div>
+  <p class="note" id="rlNote"></p>
+</div><div id="rlD" class="drawer"></div></div>
+
+<section id="moreSection">
+<h2>What format posts take</h2>
+<p id="fmtText"></p>
+<div class="card viz-row"><div>
+  <div class="legend"><span><i style="background:var(--series-1)"></i>Share of posts</span><span><i style="background:var(--series-2)"></i>Share of likes</span></div>
+  <div id="fmtChart"></div>
+  <details><summary>Show as a table</summary><div id="fmtTable"></div></details>
+</div><div id="fmtD" class="drawer"></div></div>
+
+<h2>Communities in the follow graph</h2>
+<p>Widely-followed accounts, grouped by who follows them: two accounts land in the same community when the same people follow both. Communities nest: broad groups (bold) contain smaller sub-communities, and the groups that are mainly about left-leaning politics sit together under one umbrella. The audience groupings come from the follow graph; the political umbrella comes from a model's reading of each community's accounts and posts. Sub-communities will shift with a larger sample. Each dot is one of the most-followed accounts among a random sample of active users; nearby dots share an audience. Pick a community to highlight it.</p>
+<div class="card">
+  <div class="comm-list" id="commList" role="group" aria-label="Communities"></div>
+  <div class="viz-row"><div>
+    <div id="commMap"></div><p class="note">Dot size = how many sampled active users follow the account. Position comes from t-SNE on audience overlap, so distances are only meaningful locally.</p>
+    <div id="commDetail"></div>
+  </div><div id="commD" class="drawer"></div></div>
+</div>
+
+<h2>How the groups connect</h2>
+<p>Where each group's members point their follows. Read across a row: the share of that group's follows to core accounts that go to each group. The groups are not islands, and links are often one-way: gaming members follow the celebrity and comedy group far more than it follows them back. Click a cell to see posts by the accounts being followed.</p>
+<div class="card viz-row"><div id="flows"></div><div id="flowsD" class="drawer"></div></div>
+
+<h2>What each community talks about</h2>
+<p>For each community, what its members post about. Members are sampled active users, assigned to the community they follow most; the view starts with each topic's share compared with the average across communities, which shows what makes each community distinctive. Switch to raw shares (rows sum to 100%).</p>
+<div class="card viz-row"><div><div id="heat"></div><details><summary>Show as a table</summary><div id="heatTable"></div></details></div><div id="heatD" class="drawer"></div></div>
+</section>
+
+<h2>Beyond Bluesky</h2>
+<p>Bluesky runs on the AT Protocol, which other apps can write to. Almost all activity is still Bluesky itself.</p>
+<div class="card viz-row"><div id="apps"></div><div id="appsD" class="drawer"></div></div>
+
+<h2>How this was made</h2>
+<p id="backupLink" class="note"></p>
+<ul id="method"></ul>
+<div id="tip" role="tooltip"></div>
+</main></div>
+<script>
+const DATA = /*DATA*/null;
+const $ = (s) => document.querySelector(s);
+const el = (tag, attrs = {}, kids = []) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === "text") e.textContent = v; else e.setAttribute(k, v); } for (const c of [].concat(kids)) if (c) e.append(c); return e; };
+const NS = "http://www.w3.org/2000/svg";
+const s = (tag, attrs = {}, text) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (text != null) e.textContent = text; return e; };
+const pct = (x, d = 0) => { if (x === 0) return "0%"; const v = x * 100; if (d === 0 && v < 0.1) return +v.toPrecision(1) + "%"; return v.toFixed(v < 1 && d === 0 ? 1 : d) + "%"; };
+const compact = (n) => n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + "K" : String(Math.round(n));
+const tip = $("#tip");
+function showTip(ev, rows) { tip.replaceChildren(...rows.map(([strong, rest], i) => { const d = el("div"); if (strong) d.append(el("b", { text: strong })); if (rest) d.append(document.createTextNode((strong ? " " : "") + rest)); return d; })); tip.style.display = "block"; const r = tip.getBoundingClientRect(); let x = ev.clientX + 14, y = ev.clientY + 14; if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - 14; if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - 14; tip.style.left = x + "px"; tip.style.top = y + "px"; }
+const hideTip = () => (tip.style.display = "none");
+function hoverable(node, rows) { node.setAttribute("tabindex", "0"); node.addEventListener("pointermove", (e) => showTip(e, rows())); node.addEventListener("pointerleave", hideTip); node.addEventListener("focus", () => { const b = node.getBoundingClientRect(); showTip({ clientX: b.right, clientY: b.top }, rows()); }); node.addEventListener("blur", hideTip); }
+
+// ---------- Samples: a random draw beneath every chart ----------
+const POOLS = DATA.pools || { posts: {}, accounts: {}, apps: {} };
+const shuffled = (a) => { const b = [...(a || [])]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+const safeImg = (u) => (typeof u === "string" && u.startsWith("https://cdn.bsky.app/") ? u : null);
+function ctxEx(c) {
+  const d = el("div", { class: "ctx" });
+  if (safeImg(c.i)) d.append(el("img", { src: safeImg(c.i), loading: "lazy", alt: "" })); else if (c.a) d.append(el("div", { class: "tag", text: "[image hidden: adult label]" }));
+  if (c.t) d.append(el("div", { text: c.t })); if (c.q) d.append(el("div", { class: "tag", text: `Quoting @${c.qh}: ${c.q}` })); if (c.x) d.append(el("div", { class: "tag", text: "Link: " + c.x }));
+  if (c.h) d.append(el("div", { class: "by", text: "@" + c.h })); return d;
+}
+function postEx(p) {
+  const d = el("div", { class: "ex" });
+  if (p.ctx) { const t = el("div", { class: "thread" }); p.ctx.forEach((c, i) => { t.append(ctxEx(c)); if (i === 0 && p.gap) t.append(el("div", { class: "tag", text: "⋯ more replies in between" })); }); t.append(el("div", { class: "tag", text: "↳ reply:" })); d.append(t); }
+  if (p.v) d.append(el("div", { class: "tag", text: "▶ video" }));
+  if (safeImg(p.i)) d.append(el("img", { src: safeImg(p.i), loading: "lazy", alt: "" })); else if (p.a) d.append(el("div", { class: "tag", text: "[image hidden: adult label]" }));
+  if (p.t) d.append(el("div", { text: p.t })); else if (!p.i && !p.a && !p.v) d.append(el("div", { class: "tag", text: "(no text)" }));
+  if (p.q) d.append(el("div", { class: "quoted" }, [el("div", { class: "by", text: `Quoting @${p.qh}` }), el("div", { text: p.q })]));
+  if (p.x) d.append(el("div", { class: "tag", text: "Link: " + p.x }));
+  const by = el("div", { class: "by" }); by.append(el("a", { href: p.u, target: "_blank", rel: "noopener", text: `@${p.h} · ${compact(p.l)} likes${p.r ? " · reply" : ""} ↗` })); d.append(by); return d;
+}
+function acctEx(a) {
+  const d = el("div", { class: "ex" }); d.append(el("div", {}, [el("a", { href: `https://bsky.app/profile/${a.h}`, target: "_blank", rel: "noopener", text: a.n || a.h, style: "color:var(--text-primary);font-weight:550;text-decoration:none" })]));
+  d.append(el("div", { class: "by", text: `@${a.h} · ${compact(a.f)} followers` })); if (a.b) d.append(el("div", { text: a.b })); if (a.t) d.append(el("div", { class: "tag", text: "Latest: " + a.t })); return d;
+}
+function appEx(r) { const d = el("div", { class: "ex" }); d.append(el("div", { text: r.t }), el("div", { class: "by" }, [el("a", { href: r.u, target: "_blank", rel: "noopener", text: "Raw record ↗" })])); return d; }
+function drawer(sel, title, cols, selector) {
+  const box = typeof sel === "string" ? $(sel) : sel; let active = 0; const body = el("div", { class: "drawer-list", tabindex: "0" }); const btn = el("button", { class: "toggle", type: "button", text: "Reshuffle" });
+  const tabs = el("div", { class: "chips" });
+  const draw = () => { const c = cols[active], xs = c.fixed ? c.items : shuffled(c.items); const kids = xs.map((x, i) => c.render(x, i)); if (!xs.length) kids.push(el("div", { class: "ex tag", text: "Nothing in the sample." })); body.replaceChildren(...kids); body.scrollTop = 0; };
+  const tabBtns = cols.length > 1 ? cols.map((c, i) => { const b = el("button", { type: "button", "aria-pressed": String(i === 0), text: c.title }); b.addEventListener("click", () => { active = i; tabBtns.forEach((x, j) => x.setAttribute("aria-pressed", String(j === i))); draw(); }); return b; }) : [];
+  tabs.replaceChildren(...tabBtns); btn.addEventListener("click", draw); draw();
+  box.replaceChildren(el("div", { class: "drawer-inner" }, [el("div", { class: "drawer-head" }, [el("div", { class: "drawer-title", text: title }), ...(cols.some((c) => c.fixed) ? [] : [btn])]), ...(selector ? [selector] : []), ...(tabBtns.length ? [tabs] : []), body]));
+}
+// A drawer with its own selector above the samples: choosing a label changes what the panel shows.
+function selectorDrawer(sel, labels, titleOf, itemsOf, render) {
+  const bar = el("div", { class: "chips" }); const btns = labels.map((l) => { const b = el("button", { type: "button", "aria-pressed": "false", text: l }); b.addEventListener("click", () => pick(l)); return b; });
+  const pick = (l) => { btns.forEach((b) => b.setAttribute("aria-pressed", String(b.textContent === l))); drawer(sel, titleOf(l), [{ items: itemsOf(l), render }], bar); };
+  bar.replaceChildren(...btns); if (labels.length) pick(labels[0]);
+}
+
+// ---------- Header ----------
+const G = DATA.graph, LD = DATA.like_dist;
+const apps = DATA.apps || []; const appTotal = apps.reduce((a, [, v]) => a + v, 0); const bskyShare = appTotal ? (apps.find(([k]) => k === "Bluesky") || [0, 0])[1] / appTotal : null;
+$("#lede").textContent = `A snapshot of Bluesky built from public data on ${DATA.generated.slice(0, 10)}: about 86,000 posts and 550,000 likes sampled across 34 hours, the follow lists of ${G.sample_users.toLocaleString()} randomly chosen active accounts, and an embedding model to group posts by topic. Bluesky is mostly conversation, US politics, fandom and art; the attention it generates is highly concentrated.`;
+const kpis = [
+  ["Registered accounts", "47.3M", "bsky-search.jazco.io, Oct 29"],
+  ["Accounts posting per day", "~600K", "about 1.3% of accounts"],
+  ["Likes to the 1,000 most-liked active accounts", pct(DATA.top_accounts.top_by_likes["1000"]), "estimated, over 30 days"],
+  ["Protocol activity that is Bluesky", bskyShare ? pct(bskyShare, 1) : "—", "of records created"],
+];
+$("#kpis").append(...kpis.map(([l, v, sub]) => el("div", { class: "card kpi" }, [el("div", { class: "label", text: l }), el("div", { class: "value", text: v }), el("div", { class: "sub", text: sub })])));
+
+// ---------- Generic charts ----------
+function curveChart(target, points, { xlabel, ylabel, marks = [], count = (x) => "" }) {
+  const W = 660, H = 300, m = { l: 44, r: 16, t: 12, b: 40 }; const pts = [[0, 0], ...points];
+  const X = (x) => m.l + x * (W - m.l - m.r), Y = (y) => H - m.b - y * (H - m.t - m.b);
+  const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img" });
+  for (const t of [0, 0.25, 0.5, 0.75, 1]) { svg.append(s("line", { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: t ? "var(--grid)" : "var(--axis)" })); svg.append(s("text", { x: m.l - 6, y: Y(t) + 4, "text-anchor": "end" }, pct(t))); svg.append(s("text", { x: X(t), y: H - m.b + 16, "text-anchor": "middle" }, pct(t))); }
+  svg.append(s("text", { x: (W + m.l) / 2, y: H - 6, "text-anchor": "middle", class: "lbl" }, xlabel));
+  const d = pts.map((p, i) => `${i ? "L" : "M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
+  svg.append(s("path", { d: d + `L${X(1)},${Y(0)}L${X(0)},${Y(0)}Z`, fill: "var(--series-1)", opacity: 0.1 }));
+  svg.append(s("path", { d, fill: "none", stroke: "var(--series-1)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+  // Where the curve reaches half: the plainest way to read concentration.
+  const half = pts.find((p) => p[1] >= 0.5);
+  const near = (a) => half && Math.abs(a[1] - half[1]) < 0.04 && Math.abs(a[0] - half[0]) < 0.04;   // a mark almost on top of the halfway point adds nothing
+  const allMarks = [...marks.filter((a) => !near(a)), ...(half ? [[half[0], half[1], `half of ${ylabel.replace("of ", "")} → top ${pct(half[0], half[0] < 0.1 ? 1 : 0)}${count(half[0])}`]] : [])].sort((a, b) => a[1] - b[1]);
+  // Place labels from the bottom up, keeping a full line between them; a label pushed away from its dot gets a connector.
+  const LINE = 17; let floor = H - m.b - 5;
+  for (const [x, y, label] of allMarks) {
+    const ly = Math.min(Y(y) + 15, floor); floor = ly - LINE; const lx = X(x) + 12;
+    if (Math.abs(ly - 4 - Y(y)) > 12) svg.append(s("line", { x1: X(x), y1: Y(y), x2: lx - 3, y2: ly - 4, stroke: "var(--text-muted)", "stroke-width": 1 }));
+    svg.append(s("circle", { cx: X(x), cy: Y(y), r: 4.5, fill: "var(--series-1)", stroke: "var(--surface-1)", "stroke-width": 2 }));
+    svg.append(s("text", { x: lx, y: ly, class: "lbl" }, label));
+  }
+  const cross = s("line", { y1: m.t, y2: H - m.b, stroke: "var(--axis)", visibility: "hidden" }); svg.append(cross);
+  const hit = s("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent" }); svg.append(hit);
+  hit.addEventListener("pointermove", (ev) => { const b = svg.getBoundingClientRect(); const lx = (((ev.clientX - b.left) / b.width) * W - m.l) / (W - m.l - m.r); let best = pts[0]; for (const p of pts) if (Math.abs(p[0] - lx) < Math.abs(best[0] - lx)) best = p; cross.setAttribute("x1", X(best[0])); cross.setAttribute("x2", X(best[0])); cross.setAttribute("visibility", "visible"); showTip(ev, [[pct(best[1]), ylabel], ["", `top ${pct(best[0], best[0] < 0.01 ? 2 : 1)}${count(best[0])}`]]); });
+  hit.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); hideTip(); });
+  $(target).append(svg);
+}
+
+// ---------- Concentration: one curve, several measures ----------
+{
+  const A = DATA.account_likes, W = A.weighted, T = W.top_share, ALT = DATA.attention, gs = ALT.groups, S = ALT.stats, TOP01 = "Top 0.1%", cols = [TOP01, ...gs];
+  const posts = POOLS.posts.like_tiers || {}, follows = POOLS.accounts.follow_tiers || {}, acctT = POOLS.accounts.account_tiers || {};
+  const N = ALT.n_accounts, NP = LD.n_posts, NF = G.distinct_targets;
+  const counter = (n, unit) => (x) => ` (${Math.round(x * n).toLocaleString()}${unit ? " " + unit : ""})`;
+  const cA = counter(N, "accounts"), cP = counter(NP, "posts"), cF = counter(NF, "accounts");
+  const mark = (x, y, c, about = "") => [x, y, `top ${pct(x, x < 0.01 ? 1 : 0)}${c(x)} → ${about}${pct(y)}`];
+  const halfA = W.curve.find((p) => p[1] >= 0.5)[0];
+  const variants = [
+    { label: "Likes by active account", hero: `Half of all likes go to the top ${pct(halfA, 1)} of active accounts, roughly ${Math.round(halfA * N).toLocaleString()} of an estimated ${Math.round(N).toLocaleString()}.`, curve: W.curve, count: cA, xlabel: `Top share of about ${Math.round(N).toLocaleString()} English active accounts`, y: "of likes", marks: [mark(0.001, T["0.001"], cA), mark(0.01, T["0.01"], cA), mark(0.1, T["0.1"], cA)],
+      note: `Likes received over 30 days, counting every post and reply. Measured on ${A.n.toLocaleString()} sampled accounts: the most-liked accounts we saw, plus a random draw of the rest, weighted to represent about ${Math.round(N).toLocaleString()}. ${A.capped} very heavy posters hit our fetch limit, so the top is somewhat undercounted. Median ${compact(W.median)} likes; 99th percentile ${compact(W.p99)}.`,
+      pool: ALT.accounts, title: (l) => `Random active accounts: ${l.toLowerCase()} by likes received`, render: acctEx },
+    { label: "Likes by post", hero: `The top 1% of posts (${Math.round(NP / 100).toLocaleString()} posts) get ${pct(LD.top_share["0.01"])} of likes, and ${pct(LD.zero)} of posts get none.`, curve: LD.curve, count: cP, xlabel: `Top share of ${NP.toLocaleString()} sampled English posts`, y: "of likes", marks: [mark(0.001, LD.top_share["0.001"], cP), mark(0.01, LD.top_share["0.01"], cP), mark(0.1, LD.top_share["0.1"], cP)],
+      note: `${NP.toLocaleString()} random English posts, counted at least 12 hours after posting. Median ${LD.median} like; mean ${LD.mean.toFixed(1)}.`,
+      pool: posts, title: (l) => `Random posts from the ${l.toLowerCase()} by likes`, render: postEx },
+    { label: "Follows by followed account", hero: `Following is far flatter: the 1,000 most-followed accounts get ${pct(G.top_share["1000"])} of active accounts' follows.`, curve: G.edge_curve, count: cF, xlabel: `Top share of the ${NF.toLocaleString()} accounts they follow`, y: "of follows", marks: [0.001, 0.01, 0.1].map((x) => mark(x, G.edge_curve.find((p) => p[0] >= x)[1], cF)),
+      note: `Complete follow lists of ${G.sample_users.toLocaleString()} randomly sampled English active accounts: ${compact(G.edges)} follows to ${NF.toLocaleString()} accounts. The followers are active; the accounts they follow can be anyone. ${pct(G.followed_by_1)} of followed accounts are followed by only one person in the sample. Follows are spread out; likes pile onto a few.`,
+      pool: follows, title: (l) => `Random followed accounts: ${l.toLowerCase()}`, render: acctEx },
+  ];
+  $("#attIntro").textContent = `This isn't unique to Bluesky. On broadcast-style networks, where anyone can post to everyone, attention always piles onto a small share of posts and accounts. What's specific to Bluesky is who those influential accounts are and what they talk about, which the next sections cover. An active account here means an English account that posted in the last 30 days and appeared in our sample, either posting or being liked, during 34 sampled minutes. That's an estimated ${Math.round(N).toLocaleString()} accounts. Quieter accounts we never saw aren't counted, so this is a lower bound; about 600,000 accounts of all languages post on a typical day. Switch between measures below; the samples on the right change with them.`;
+  const btns = variants.map((v) => { const b = el("button", { type: "button", "aria-pressed": "false", text: v.label }); b.addEventListener("click", () => show(v)); return b; });
+  const show = (v) => { btns.forEach((b) => b.setAttribute("aria-pressed", String(b.textContent === v.label))); $("#attHero").textContent = v.hero; $("#attNote").textContent = v.note; $("#attCurve").replaceChildren(); curveChart("#attCurve", v.curve, { xlabel: v.xlabel, ylabel: v.y, marks: v.marks, count: v.count }); selectorDrawer("#attD", Object.keys(v.pool), v.title, (l) => v.pool[l], v.render); };
+  $("#attToggle").replaceChildren(...btns); show(variants[Number(location.hash.slice(1)) || 0]);
+
+  // Comparison table + the people themselves
+  $("#cmpIntro").textContent = `Active accounts ranked by likes received over 30 days. The top 1% are about ${Math.round(S[gs[0]].accounts).toLocaleString()} accounts. They wrote ${pct(S[gs[0]].post_share, 1)} of posts and got ${pct(S[gs[0]].like_share)} of likes.`;
+  const rows = [["Active accounts (estimated)", (x) => Math.round(x.accounts).toLocaleString()], ["Share of likes received", (x) => pct(x.like_share)], ["Share of posts written", (x) => pct(x.post_share, 1)], ["Likes per account, 30 days", (x) => compact(x.likes_per_account)], ["Median posts, 30 days", (x) => compact(x.posts_30d)], ["Median followers", (x) => compact(x.median_followers)], ["Median accounts followed", (x) => compact(x.median_follows)], ["Median lifetime posts", (x) => compact(x.median_total_posts)], ["Median account age", (x) => x.median_age_years.toFixed(1) + " years"], ["Posts that are replies", (x) => pct(x.reply_share)]];
+  const t = el("table"); t.append(el("tr", {}, [el("th", { text: "" }), ...cols.map((g) => el("th", { class: "num", text: g }))])); for (const [l, f] of rows) t.append(el("tr", {}, [el("td", { text: l }), ...cols.map((g) => el("td", { class: "num", text: f(S[g]) }))])); $("#cmpTable").append(t);
+  $("#cmpNote").textContent = "The top 0.1% is part of the top 1%. Based on 30 days of likes for the sampled accounts, weighted; the bottom group is estimated from a random sample of 635 accounts.";
+  selectorDrawer("#cmpD", cols, (g) => `Random active accounts: ${g}`, (g) => ALT.accounts[g], acctEx);
+
+  // Topic and format mix: top 1% vs other 90%, with real posts from both sides
+  const [top, , rest] = gs; let mode = "topics";
+  const modes = [["topics", "Topics", "cat", "What they post about"], ["formats", "Formats", "fmt", "What format they post in"]];
+  const mb = modes.map(([k, l]) => { const b = el("button", { type: "button", "aria-pressed": "false", text: l }); b.addEventListener("click", () => draw(k)); return b; });
+  function draw(k) {
+    const [, label, key, title] = modes.find((m) => m[0] === k); mb.forEach((b) => b.setAttribute("aria-pressed", String(b.textContent === label))); $("#mixTitle").textContent = title;
+    const names = Object.keys(ALT[k][rest]).filter((n) => (ALT[k][rest][n] || 0) + (ALT[k][top][n] || 0) > 0.002);
+    const items = names.map((n) => ({ name: n, vol: ALT[k][rest][n] || 0, likes: ALT[k][top][n] || 0 })).sort((a, b) => b.likes / (b.vol || 1e-9) - a.likes / (a.vol || 1e-9));
+    pairedBars("#mixChart", items, (r) => drawer("#mixD", `Random posts: ${r.name}`, [{ title: "Top 1%", items: ALT.pools[`${key}|${top}|${r.name}`], render: postEx }, { title: "Other 90%", items: ALT.pools[`${key}|${rest}|${r.name}`], render: postEx }]), (r) => `${(r.likes / (r.vol || 1e-9)).toFixed(1)}× as common among the top 1%`, ["of top 1% active accounts' posts", "of other 90%'s posts"]);
+  }
+  $("#mixToggle").replaceChildren(...mb); draw("topics");
+}
+
+// ---------- Categories ----------
+const clusters = DATA.clusters; const cats = new Map();
+for (const c of clusters) { const k = c.category; if (!cats.has(k)) cats.set(k, { name: k, vol: 0, likes: 0, subs: [] }); const g = cats.get(k); g.vol += c.vol; g.likes += c.likes; g.subs.push(c); }
+const catDesc = Object.fromEntries((DATA.categories || []).map((c) => [c.name, c.description]));
+const catList = [...cats.values()].sort((a, b) => b.likes + b.vol - (a.likes + a.vol));
+function pairedBars(target, rows, onPick, descOf = (r) => catDesc[r.name], labels = ["of likes", "of posts"], tree = false) {
+  const W = 720, rowH = 34, m = { l: Math.max(120, 7 * Math.max(...rows.map((r) => r.name.length)) + (tree ? 54 : 24)), r: 70, t: 4, b: 24 }, H = m.t + m.b + rows.length * rowH;
+  const max = Math.max(...rows.flatMap((r) => [r.vol, r.likes])); const X = (v) => m.l + (v / max) * (W - m.l - m.r);
+  const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img" }); const hits = [];
+  const choose = (i) => { hits.forEach((h, j) => h.setAttribute("fill", j === i ? "var(--grid)" : "transparent")); onPick(rows[i]); };
+  // A group block behind a parent row and its children, so they read as one thing.
+  if (tree) { const first = rows.findIndex((r) => r.toggle); const kids = rows.filter((r) => r.child).length; svg.append(s("rect", { x: 0, y: m.t + first * rowH, width: W, height: (kids + 1) * rowH, rx: 6, fill: "var(--page)", stroke: "var(--grid)" })); if (kids) svg.append(s("line", { x1: 15, x2: 15, y1: m.t + (first + 1) * rowH, y2: m.t + (first + kids + 0.5) * rowH, stroke: "var(--axis)" })); }
+  for (const t of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8].filter((t) => t <= max + 1e-9)) { svg.append(s("line", { x1: X(t), x2: X(t), y1: m.t, y2: H - m.b, stroke: t ? "var(--grid)" : "var(--axis)" })); svg.append(s("text", { x: X(t), y: H - 6, "text-anchor": "middle" }, pct(t))); }
+  rows.forEach((r, i) => {
+    const y = m.t + i * rowH, g = s("g", onPick ? { class: "cat-row", role: "button", "aria-label": r.name } : { "aria-label": r.name });
+    const hit = s("rect", { class: "hit", x: 0, y, width: W, height: rowH, fill: "transparent", rx: 4 }); hits.push(hit); g.append(hit);
+    if (tree) { if (r.child) g.append(s("line", { x1: 15, x2: 25, y1: y + rowH / 2, y2: y + rowH / 2, stroke: "var(--axis)" })); g.append(s("text", { x: r.child ? 30 : 8, y: y + rowH / 2 + 4, class: r.child ? "lbl" : "lbl strong" }, r.toggle ? `${r.open ? "▾" : "▸"} ${r.name}` : r.name)); }
+    else g.append(s("text", { x: m.l - 12, y: y + rowH / 2 + 4, "text-anchor": "end", class: "lbl strong" }, r.name));
+    [[r.vol, "var(--series-1)", 6], [r.likes, "var(--series-2)", 18]].forEach(([v, col, dy]) => { const w = Math.max(1, X(v) - m.l), rr = Math.min(4, w); g.append(s("path", { d: `M${m.l},${y + dy}H${m.l + w - rr}Q${m.l + w},${y + dy} ${m.l + w},${y + dy + rr / 2}V${y + dy + 10 - rr / 2}Q${m.l + w},${y + dy + 10} ${m.l + w - rr},${y + dy + 10}H${m.l}Z`, fill: col })); });
+    g.append(s("text", { x: X(Math.max(r.vol, r.likes)) + 8, y: y + rowH / 2 + 4, class: "lbl" }, `${pct(r.vol)} / ${pct(r.likes)}`));
+    hoverable(g, () => [[pct(r.likes), labels[0]], [pct(r.vol), labels[1]], ["", r.name + (descOf(r) ? " — " + descOf(r) : "")]]);
+    if (onPick) { const go = () => { choose(i); if (r.toggle) r.toggle(); }; g.addEventListener("click", go); g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } }); }
+    svg.append(g);
+  });
+  $(target).replaceChildren(svg); if (onPick) choose(0);
+}
+function clusterCols(subs) {
+  const totV = subs.reduce((a, c) => a + c.vol, 0) || 1, totL = subs.reduce((a, c) => a + c.likes, 0) || 1;
+  const blend = (key, share, tot) => subs.flatMap((c) => shuffled(POOLS.posts.clusters?.[c.id]?.[key]).slice(0, Math.max(1, Math.round((share(c) / tot) * 24))));
+  return [{ title: "Random posts", items: blend("posted", (c) => c.vol, totV), render: postEx }, { title: "Random likes", items: blend("liked", (c) => c.likes, totL), render: postEx }];
+}
+function showCategory(cat) {
+  const p = $("#catPanel"); const dr = $("#catD");
+  p.replaceChildren(el("h3", { text: `${cat.name}: ${pct(cat.vol)} of posts, ${pct(cat.likes)} of likes` }), el("p", { text: catDesc[cat.name] || "" }));
+  const tbl = el("table"); tbl.append(el("tr", {}, [el("th", { text: "Subtopic (click for samples)" }), el("th", { class: "num", text: "Posts" }), el("th", { class: "num", text: "Likes" })]));
+  const maxv = Math.max(...cat.subs.flatMap((c) => [c.vol, c.likes])); const trs = [];
+  const pick = (c, tr) => { trs.forEach((t) => t.setAttribute("aria-selected", String(t === tr))); if (c) drawer(dr, `Random samples: ${c.label}`, clusterCols([c])); else drawer(dr, `Random samples: ${cat.name}`, clusterCols(cat.subs)); };
+  for (const c of [...cat.subs].sort((a, b) => b.likes + b.vol - (a.likes + a.vol))) {
+    const tr = el("tr", { class: "pick", tabindex: "0" }); const name = el("td"); name.append(el("div", { text: c.label, style: "color:var(--text-primary);font-weight:550" }), el("div", { text: c.description }));
+    const bar = (v, col) => { const t = el("td", { class: "num" }); t.append(el("span", { class: "bar", style: `width:${Math.round((v / maxv) * 70)}px;background:${col};margin-right:6px` }), document.createTextNode(pct(v, 1))); return t; };
+    tr.append(name, bar(c.vol, "var(--series-1)"), bar(c.likes, "var(--series-2)")); tr.addEventListener("click", () => pick(c, tr)); tr.addEventListener("keydown", (e) => { if (e.key === "Enter") pick(c, tr); }); trs.push(tr); tbl.append(tr);
+  }
+  p.append(tbl); pick(null, null);
+}
+pairedBars("#catChart", catList, showCategory);
+{ const t = el("table"); t.append(el("tr", {}, [el("th", { text: "Category" }), el("th", { class: "num", text: "Share of posts" }), el("th", { class: "num", text: "Share of likes" }), el("th", { class: "num", text: "Likes ÷ posts" })])); for (const c of catList) t.append(el("tr", {}, [el("td", { text: c.name }), el("td", { class: "num", text: pct(c.vol, 1) }), el("td", { class: "num", text: pct(c.likes, 1) }), el("td", { class: "num", text: (c.likes / c.vol).toFixed(2) + "×" })])); $("#catTable").append(t, el("p", { class: "note", text: `English posts only. Image- or video-only posts with no text are excluded: they are ${pct(DATA.media_only.posted_share)} of English posts but ${pct(DATA.media_only.liked_share)} of likes on English posts.` })); }
+
+// ---------- Cliques ----------
+function cliqueChart(mode, ids) {
+  const $$ = (k) => $(ids[k]);
+  const C = DATA.cliques, LK = DATA.like_cliques, isLeft = (n) => n.startsWith("US left") || n.endsWith(": left") || n === "Brazilian left" || n === "Anti-Israel, pro-Palestine";
+  const topBy = Object.fromEntries(C.cliques.map((c) => [c.name, c])), lkBy = Object.fromEntries((LK ? LK.cliques : []).map((c) => [c.name, c]));
+  const names = [...new Set([...C.cliques.map((c) => c.name), ...(LK ? LK.cliques.map((c) => c.name) : [])])].filter((n) => n !== "Not tagged");
+  let leftOpen = true;
+  const modes = { top: { label: "The 1,000 most-liked accounts", legend: ["Share of the 1,000 accounts", "Share of likes on posts by those 1,000 accounts"], hover: ["of likes on posts by the top 1,000", "of the 1,000 accounts"] },
+                  random: { label: "What people actually like", legend: ["Share of likes on all posts (random sample)", "Share of likes on posts by the top 1,000 accounts"], hover: ["of likes on posts by the top 1,000", "of likes on all posts"] } };
+  const rowFor = (n) => { const t = topBy[n], l = lkBy[n];
+    return mode === "top" ? { name: n, vol: t?.account_share || 0, likes: t?.like_share || 0, c: { accounts: t?.accounts || 0, sample: t?.sample || [], src: "top" } }
+                          : { name: n, vol: l?.like_share || 0, likes: t?.like_share || 0, c: { accounts: l?.likes || 0, moe: l?.moe, sample: l?.sample || [], src: "random" } }; };
+  const accountPage = (a, r) => {
+    const box = $$("d"), list = [...box.childNodes]; const back = el("button", { class: "toggle", type: "button", text: "← Back" }); back.addEventListener("click", () => box.replaceChildren(...list));
+    const body = el("div", { class: "drawer-list", tabindex: "0" });
+    body.append(el("div", {}, [el("a", { href: `https://bsky.app/profile/${a.h}`, target: "_blank", rel: "noopener", text: `${a.n || a.h} ↗`, style: "color:var(--text-primary);font-weight:600;font-size:15px;text-decoration:none" })]));
+    body.append(el("div", { class: "by", text: `@${a.h} · ${compact(a.f)} followers${a.l != null ? ` · ${compact(a.l)} likes in 30 days` : ""}`, style: "color:var(--text-muted);font-size:12px" }));
+    if (a.s) body.append(el("p", { text: a.s, style: "margin:8px 0 2px" })); if (a.b) body.append(el("p", { class: "note", text: a.b, style: "margin:2px 0 10px" }));
+    body.append(el("div", { class: "pill", text: `Clique: ${a.clique || r.name}${a.sec ? ` · also ${a.sec}` : ""}${a.c === "low" ? " · low confidence" : ""}` }), el("div", { class: "drawer-title", text: r.c.src === "random" ? "The liked post" + ((a.posts || []).length > 1 ? "s in the sample" : "") : "Most-liked recent posts", style: "margin-top:12px" }));
+    for (const p of a.posts || []) body.append(postEx(p)); if (!(a.posts || []).length) body.append(el("div", { class: "ex tag", text: "No recent posts in the sample." }));
+    box.replaceChildren(el("div", { class: "drawer-inner" }, [el("div", { class: "drawer-head" }, [el("div", { class: "drawer-title", text: r.name }), back]), body]));
+  };
+  const row = (r) => (a, i) => { const d = el("div", { class: "ex acct-row", role: "button", tabindex: "0" });
+    const head = el("div", { style: "display:flex;justify-content:space-between;gap:8px" }, [el("span", { text: `${r.c.src === "top" ? `${i + 1}. ` : ""}${a.n || a.h}`, style: "color:var(--text-primary);font-weight:550" })]);
+    if (r.c.src === "top" && a.l != null) head.append(el("span", { text: `${compact(a.l)} likes`, style: "color:var(--text-muted);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums" }));
+    d.append(head); if (a.s) d.append(el("div", { text: a.s })); const open = () => accountPage(a, r); d.addEventListener("click", open); d.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); }); return d; };
+  // Each group carries its 30 most-liked accounts, so a merged row's top 30 is exact; past 30 it could skip accounts.
+  const pick = (r) => { if (r.c.src !== "top") return drawer(ids.d, `Random liked accounts: ${r.name}`, [{ items: r.c.sample, render: row(r) }]);
+    const top = [...r.c.sample].sort((a, b) => b.l - a.l).slice(0, 30);
+    drawer(ids.d, `Most-liked accounts: ${r.name}${r.c.accounts > top.length ? ` (top ${top.length} of ${r.c.accounts})` : ""}`, [{ items: top, render: row(r), fixed: true }]); };
+  function draw() {
+    const m = modes[mode];
+    $$("legend").replaceChildren(el("span", {}, [el("i", { style: "background:var(--series-1)" }), document.createTextNode(m.legend[0])]), el("span", {}, [el("i", { style: "background:var(--series-2)" }), document.createTextNode(m.legend[1])]));
+    const all = names.map(rowFor).sort((a, b) => b.vol + b.likes - (a.vol + a.likes)), kids = all.filter((r) => isLeft(r.name)).map((r) => ({ ...r, child: true })), others = all.filter((r) => !isLeft(r.name));
+    const sum = (k) => kids.reduce((a, r) => a + r[k], 0);
+    const parent = { name: "Left-wing politics", vol: sum("vol"), likes: sum("likes"), open: leftOpen, c: { accounts: kids.reduce((a, r) => a + r.c.accounts, 0), src: mode === "top" ? "top" : "random", sample: kids.flatMap((r) => r.c.sample.map((x) => ({ ...x, clique: r.name }))) } };
+    parent.toggle = () => { leftOpen = !leftOpen; draw(); };
+    const usLeft = kids.filter((r) => r.name.startsWith("US left"));
+    // Share of each topic's likes that go to the top 1,000 accounts: how concentrated it is on a few influencers.
+    const conc = (topShare, rndShare) => (rndShare ? Math.min(1, (topShare * C.top_share_of_all) / rndShare) : 0);
+    const named = (n) => { const r = all.find((x) => x.name === n); return r ? (mode === "top" ? { t: r.likes, r: lkBy[n]?.like_share || 0 } : { t: r.likes, r: r.vol }) : { t: 0, r: 0 }; };
+    const leftC = conc(mode === "top" ? parent.likes : parent.likes, mode === "top" ? kids.reduce((a, r) => a + (lkBy[r.name]?.like_share || 0), 0) : parent.vol);
+    const artC = conc(named("Art and illustration").t, named("Art and illustration").r), adultC = conc(named("Adult sexual content").t, named("Adult sexual content").r);
+    $$("text").textContent = mode === "top"
+      ? `The 1,000 accounts that received the most likes over 30 days: Bluesky's most influential accounts, not the ones that post the most. Posts by these accounts get about ${pct(C.top_share_of_all)} of all likes. They are mostly about left-wing politics: ${pct(parent.vol)} of these accounts, whose posts get ${pct(parent.likes)} of the likes on top-1,000 posts, nearly all of it US politics, and none is tagged right-wing. A model tagged each account with its main focus, judged from its bio, its most-liked posts and what it shares: for political accounts, which side they're on; for everyone else, their main topic.`
+      : `A random sample of ${LK.n_likes.toLocaleString()} likes on English posts, with each liked account tagged the same way. This is what people actually like, and it's a broader mix than what the top accounts post: left-wing politics is still the biggest single group at ${pct(parent.vol)} of likes, but art, adult content, entertainment and games together get more (about 47%). Comparing the two charts shows which topics are concentrated on a few influencers: about ${pct(leftC)} of likes on posts by left-wing political accounts go to posts by the top 1,000, against about ${pct(artC)} for art accounts and ${pct(adultC)} for adult-content accounts, whose likes are spread across many smaller accounts. Shares are accurate to about ±3 points.`;
+    pairedBars(ids.chart, [parent, ...(leftOpen ? kids : []), ...others], pick, (r) => (mode === "top" ? `${r.c.accounts} accounts` : `${r.c.accounts} of ${LK.n_likes} sampled likes`), m.hover, true);
+  }
+  draw();
+  $$("note").textContent = mode === "top"
+    ? "The top 1,000 are the most-liked of 1,500 accounts tagged; those 1,500 were chosen from likes in our 34 sampled minutes, so some accounts that are big over 30 days but quiet in those minutes are missing. Clicking a row lists its most-liked accounts in order, with their likes over 30 days. Image-only accounts were tagged from any text they had. Individual tags can be wrong; the shares are what to trust."
+    : "Each row's blue bar is from the random likes; the orange bar repeats the top 1,000's share from the chart above, for comparison. Accounts were tagged from their bio, most-liked posts and what they share, not from the single liked post.";
+}
+
+if (DATA.cliques) cliqueChart("top", { d: "#cliqueD", legend: "#cliqueLegend", text: "#cliqueText", chart: "#cliqueChart", note: "#cliqueNote" });
+if (DATA.cliques && DATA.like_cliques) cliqueChart("random", { d: "#rlD", legend: "#rlLegend", text: "#rlText", chart: "#rlChart", note: "#rlNote" });
+
+// ---------- Scale ----------
+{
+  const SC = DATA.scale; const num = (v) => (v >= 1000 ? `${v / 1000}B` : `${v >= 10 ? Math.round(v * 10) / 10 : v >= 1 ? v.toFixed(1) : v.toFixed(v >= 0.1 ? 2 : 3).replace(/0+$/, "")}M`);
+  const srcEx = (r) => { const d = el("div", { class: "ex" }); d.append(el("div", { text: `${r.name}: ${num(r.v)}`, style: "color:var(--text-primary);font-weight:550" }), el("div", { text: r.basis }), el("div", { class: "by" }, [el("a", { href: r.url, target: "_blank", rel: "noopener", text: "Source ↗" })])); return d; };
+  const bars = (v) => {
+    const W = 720, rowH = 32, ml = 190, mr = 70, H = v.rows.length * rowH + 8, max = Math.max(...v.rows.map((r) => r.v)), X = (x) => ml + (x / max) * (W - ml - mr);
+    const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img" });
+    v.rows.forEach((r, i) => { const y = i * rowH + 4, g = s("g"), w = Math.max(2, X(r.v) - ml), rr = Math.min(4, w);
+      g.append(s("rect", { x: 0, y, width: W, height: rowH, fill: "transparent" }), s("text", { x: ml - 10, y: y + rowH / 2 + 4, "text-anchor": "end", class: r.me ? "lbl strong" : "lbl" }, r.name.length > 27 ? r.name.slice(0, 26) + "…" : r.name));
+      g.append(s("path", { d: `M${ml},${y + 7}H${ml + w - rr}Q${ml + w},${y + 7} ${ml + w},${y + 7 + rr}V${y + 25 - rr}Q${ml + w},${y + 25} ${ml + w - rr},${y + 25}H${ml}Z`, fill: r.me ? "var(--series-1)" : "var(--deemph)" }));
+      g.append(s("text", { x: ml + w + 8, y: y + rowH / 2 + 4, class: "lbl" }, num(r.v)));
+      hoverable(g, () => [[num(r.v), v.unit.replace("M ", "")], ["", r.name], ["", r.basis]]); svg.append(g); });
+    $("#scaleChart").replaceChildren(svg);
+  };
+  const btns = SC.views.map((v) => { const b = el("button", { type: "button", "aria-pressed": "false", text: v.label }); b.addEventListener("click", () => show(v)); return b; });
+  const show = (v) => { btns.forEach((b) => b.setAttribute("aria-pressed", String(b.textContent === v.label))); $("#scaleHero").textContent = v.hero; $("#scaleNote").textContent = SC.note; bars(v); drawer("#scaleD", "Where these numbers come from", [{ items: v.rows, render: srcEx, fixed: true }]); };
+  $("#scaleToggle").replaceChildren(...btns); show(SC.views[0]);
+}
+
+// ---------- Languages ----------
+{ const rows = DATA.languages.map((r) => ({ name: r.name, vol: r.posts, likes: r.likes, code: r.code })); const en = rows.find((r) => r.code === "en");
+  $("#langText").textContent = `${pct(en.vol)} of posts are tagged English, and they collect ${pct(en.likes)} of likes. Everything else on this page is English only, except where noted. Posts with no language tag (${pct(rows.find((r) => r.code === "?").vol)}) are often images or links with no text.`;
+  pairedBars("#langChart", rows, (r) => drawer("#langD", `Random samples: ${r.name}`, [{ title: "Random posts", items: POOLS.posts.languages?.[r.code]?.posted, render: postEx }, { title: "Random likes", items: POOLS.posts.languages?.[r.code]?.liked, render: postEx }]), (r) => ""); }
+
+// ---------- Formats ----------
+if (DATA.formats) {
+  const F = DATA.formats; const rows = F.rows.map((r) => ({ name: r.format, vol: r.share_posts, likes: r.share_likes, r }));
+  const sum = (pred, k) => rows.filter(pred).reduce((a, r) => a + r[k], 0); const visual = (r) => /Images|Video|with media/.test(r.name), text = (r) => r.name.startsWith("Text:");
+  $("#fmtText").textContent = `Pictures and video are what gets liked. Posts with images or video are ${pct(sum(visual, "vol"))} of posts but ${pct(sum(visual, "likes"))} of likes, while plain text is ${pct(sum(text, "vol"))} of posts and ${pct(sum(text, "likes"))} of likes. Link cards do poorly: ${pct(rows.find((r) => r.name === "Link card").r.zero)} get no likes at all. ${pct(F.extra.reply_share)} of all posts are replies, which collect ${pct(F.extra.likes_on_replies)} of likes.`;
+  pairedBars("#fmtChart", rows, (r) => drawer("#fmtD", `Random samples: ${r.name}`, [{ title: "Random posts", items: POOLS.posts.formats?.[r.name]?.posted, render: postEx }, { title: "Random likes", items: POOLS.posts.formats?.[r.name]?.liked, render: postEx }]), (r) => `${pct(r.r.reply_share)} are replies; mean ${r.r.mean.toFixed(1)} likes, ${pct(r.r.zero)} get none`);
+  const t = el("table"); t.append(el("tr", {}, ["Format", "Share of posts", "Share of likes", "Likes ÷ posts", "Mean likes", "Median likes", "No likes", "Replies"].map((h, i) => el("th", { class: i ? "num" : "", text: h }))));
+  for (const { r } of rows) t.append(el("tr", {}, [el("td", { text: r.format }), ...[pct(r.share_posts, 1), pct(r.share_likes, 1), (r.share_likes / r.share_posts).toFixed(2) + "×", r.mean.toFixed(1), String(r.median), pct(r.zero), pct(r.reply_share)].map((v) => el("td", { class: "num", text: v }))]));
+  $("#fmtTable").append(t, el("p", { class: "note", text: `English posts. ${F.extra.counted.toLocaleString()} sampled posts at least 12 hours old. Format buckets don't overlap; text lengths exclude links.` }));
+}
+
+// ---------- Communities ----------
+const comms = [...DATA.communities].sort((a, b) => b.members_in_sample - a.members_in_sample);
+const parents = (DATA.hierarchy ? DATA.hierarchy.parents : []).map((p) => ({ ...p, isParent: true }));
+const umbrellas = (DATA.hierarchy?.umbrellas || []).map((u) => ({ ...u, isParent: true }));
+const items = [...umbrellas, ...parents, ...comms];
+let selected = (umbrellas[0] || parents[0] || comms[0]).id;
+const mapW = 620, mapH = 520; const pts = DATA.points;
+const xr = [Math.min(...pts.map((p) => p.x)), Math.max(...pts.map((p) => p.x))], yr = [Math.min(...pts.map((p) => p.y)), Math.max(...pts.map((p) => p.y))];
+const PX = (x) => 12 + ((x - xr[0]) / (xr[1] - xr[0])) * (mapW - 24), PY = (y) => 12 + ((y - yr[0]) / (yr[1] - yr[0])) * (mapH - 24);
+const maxIn = Math.max(...pts.map((p) => p.indeg)); const R = (n) => 2.2 + 6 * Math.sqrt(n / maxIn);
+const mapSvg = s("svg", { viewBox: `0 0 ${mapW} ${mapH}`, width: "100%", role: "img", "aria-label": "Map of communities" });
+const dots = pts.map((p) => { const c = s("circle", { cx: PX(p.x), cy: PY(p.y), r: R(p.indeg), stroke: "var(--surface-1)", "stroke-width": 1 }); c.dataset.c = p.c; return c; });
+const back = s("g"), front = s("g"); mapSvg.append(back, front);
+mapSvg.addEventListener("pointermove", (ev) => { const b = mapSvg.getBoundingClientRect(); const mx = ((ev.clientX - b.left) / b.width) * mapW, my = ((ev.clientY - b.top) / b.height) * mapH; let best = null, bd = 1e9; for (const p of pts) { const d = (PX(p.x) - mx) ** 2 + (PY(p.y) - my) ** 2; if (d < bd) { bd = d; best = p; } } if (bd > 400) return hideTip(); const cm = comms.find((c) => c.id === best.c); showTip(ev, [[best.name || best.handle, ""], ["", "@" + best.handle], ["", `${cm.name} · followed by ${best.indeg} of ${G.sample_users.toLocaleString()} sampled users`]]); });
+mapSvg.addEventListener("pointerleave", hideTip);
+mapSvg.addEventListener("click", (ev) => { const b = mapSvg.getBoundingClientRect(); const mx = ((ev.clientX - b.left) / b.width) * mapW, my = ((ev.clientY - b.top) / b.height) * mapH; let best = null, bd = 1e9; for (const p of pts) { const d = (PX(p.x) - mx) ** 2 + (PY(p.y) - my) ** 2; if (d < bd) { bd = d; best = p; } } if (bd < 400) selectComm(best.c); });
+$("#commMap").append(mapSvg);
+function selectComm(id) {
+  selected = id; back.replaceChildren(); front.replaceChildren();
+  const cm = items.find((c) => String(c.id) === String(id)); const set = new Set(cm.children || [cm.id]);
+  dots.forEach((d) => { const on = set.has(+d.dataset.c); d.setAttribute("fill", on ? "var(--series-1)" : "var(--deemph)"); d.setAttribute("opacity", on ? 1 : 0.55); (on ? front : back).append(d); });
+  for (const b of document.querySelectorAll("#commList button")) b.setAttribute("aria-pressed", String(b.dataset.id === String(id)));
+  const det = $("#commDetail");
+  det.replaceChildren(el("h3", { text: cm.name }), el("p", { text: cm.description, style: "margin:2px 0 8px" }), el("div", { class: "pill", text: `${cm.isParent ? cm.children.length + " sub-communities · " : ""}${cm.size} core accounts · ${cm.members_in_sample} sampled active users mainly follow this ${cm.isParent ? "group" : "community"} (${pct(cm.members_in_sample / comms.reduce((a, c) => a + c.members_in_sample, 0))} of those assigned)` }));
+  det.append(el("div", { class: "pill", text: "What members post about", style: "margin-top:12px" }));
+  const mix = Object.entries(cm.category_mix).slice(0, 6); const mx = Math.max(...mix.map((m) => m[1]));
+  for (const [k, v] of mix) det.append(el("div", { class: "acct" }, [el("span", { class: "bar", style: `display:inline-block;height:8px;border-radius:0 3px 3px 0;background:var(--series-1);width:${Math.round((v / mx) * 120)}px;margin-right:8px` }), document.createTextNode(`${k} ${pct(v)}`)]));
+  det.append(el("div", { class: "pill", text: "Most-followed accounts", style: "margin-top:12px" }));
+  const pool = (k) => (cm.children || [cm.id]).flatMap((i) => POOLS.posts.communities?.[i]?.[k] || []);
+  drawer("#commD", `Random samples: ${cm.name}`, [{ title: "Most-followed accounts", items: pool("core"), render: postEx }, { title: "Random members", items: pool("members"), render: postEx }, { title: "Members' popular posts", items: pool("popular"), render: postEx }]);
+  for (const a of cm.top.slice(0, 14)) det.append(el("div", { class: "acct" }, [el("a", { href: `https://bsky.app/profile/${a.handle}`, target: "_blank", rel: "noopener", text: a.name || a.handle }), document.createTextNode(` @${a.handle} `), el("span", { class: "pill", text: `· ${compact(a.followers || 0)} followers` })]));
+}
+const commButton = (cm, cls) => { const b = el("button", { type: "button", "aria-pressed": "false", class: cls, text: `${cm.name} (${cm.members_in_sample})` }); b.dataset.id = cm.id; b.addEventListener("click", () => selectComm(cm.id)); return b; };
+const groupRow = (p) => el("div", { class: "comm-group" }, [commButton(p, "parent"), ...(p.children.length > 1 ? p.children.map((id) => commButton(comms.find((c) => c.id === id), "")) : [])]);
+if (parents.length) {
+  const inU = new Set(umbrellas.flatMap((u) => u.groups));
+  for (const u of umbrellas) $("#commList").append(el("div", { class: "umbrella" }, [commButton(u, "parent top"), ...u.groups.map((id) => groupRow(parents.find((p) => p.id === id)))]));
+  for (const p of parents.filter((p) => !inU.has(p.id))) $("#commList").append(groupRow(p));
+}
+else $("#commList").append(el("div", { class: "comm-group" }, comms.map((c) => commButton(c, ""))));
+selectComm(selected);
+
+// ---------- Group flows ----------
+if (DATA.flows && parents.length) {
+  const F = DATA.flows, gs = F.groups.map((id) => parents.find((p) => p.id === id)); const cw = 68, rh = 34, ml = 200, mt = 100, W = ml + gs.length * cw + 40, H = mt + gs.length * rh + rh + 8;
+  const col = (v) => `var(--seq-${[0.02, 0.05, 0.1, 0.2, 0.35, 0.5].filter((t) => v >= t).length})`; let sel = "0|3"; const holder = el("div"); $("#flows").append(holder);
+  const pick = (i, j) => { sel = `${i}|${j}`; render(); drawer("#flowsD", `What ${gs[i].name} members are following: ${gs[j].name}`, [{ title: "Posts by its most-followed accounts", items: gs[j].children.flatMap((c) => POOLS.posts.communities?.[c]?.core || []), render: postEx }]); };
+  function render() {
+    const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img" });
+    gs.forEach((g, j) => svg.append(s("text", { x: 0, y: 0, class: "lbl", transform: `translate(${ml + j * cw + cw / 2 - 4},${mt - 8}) rotate(-50)` }, g.name.length > 20 ? g.name.slice(0, 19) + "…" : g.name)));
+    gs.forEach((g, i) => { svg.append(s("text", { x: ml - 10, y: mt + i * rh + rh / 2 + 4, "text-anchor": "end", class: "lbl strong" }, g.name.length > 25 ? g.name.slice(0, 24) + "…" : g.name));
+      F.rows[i].forEach((v, j) => { const c = s("g", { class: "clickbar" }), on = sel === `${i}|${j}`; c.append(s("rect", { x: ml + j * cw + 1, y: mt + i * rh + 1, width: cw - 2, height: rh - 2, rx: 3, fill: col(v), ...(on ? { stroke: "var(--text-primary)", "stroke-width": 2 } : {}) })); c.append(s("text", { x: ml + j * cw + cw / 2, y: mt + i * rh + rh / 2 + 4, "text-anchor": "middle", style: `fill:${v >= 0.35 ? "#ffffff" : "var(--text-primary)"}` }, pct(v))); c.addEventListener("click", () => pick(i, j)); c.addEventListener("keydown", (e) => { if (e.key === "Enter") pick(i, j); }); hoverable(c, () => [[pct(v), "of follows"], ["", `${g.name} → ${gs[j].name}`], ["", `${gs[j].name} is ${pct(F.core_share[j])} of core accounts`]]); svg.append(c); }); });
+    svg.append(s("text", { x: ml - 10, y: mt + gs.length * rh + 22, "text-anchor": "end", class: "lbl" }, "Share of all core accounts"));
+    F.core_share.forEach((v, j) => svg.append(s("text", { x: ml + j * cw + cw / 2, y: mt + gs.length * rh + 22, "text-anchor": "middle", class: "lbl" }, pct(v))));
+    holder.replaceChildren(svg);
+  }
+  const gi = gs.findIndex((g) => g.name.startsWith("Gaming")), ci = gs.findIndex((g) => g.name.startsWith("Celebrities")); pick(gi < 0 ? 0 : gi, ci < 0 ? 0 : ci);
+}
+
+// ---------- Heatmap ----------
+{
+  const MIN_POSTS = 150; const enough = (c) => (c.posts_seen || 0) >= MIN_POSTS; const dropped = comms.filter((c) => !enough(c)).length;
+  const inU = new Set(umbrellas.flatMap((u) => u.groups));
+  const hcomms = parents.length ? [...umbrellas, ...parents].flatMap((p) => p.groups ? [p] : [p, ...(p.children.length > 1 ? p.children.map((id) => comms.find((c) => c.id === id)).filter(enough) : [])]) : comms.filter(enough);
+  const catNames = catList.map((c) => c.name); const cw = 50, rh = 26, ml = 190, mt = 112, W = ml + catNames.length * cw + 70, H = mt + hcomms.length * rh + 10;
+  const short = (t, n) => (t.length > n ? t.slice(0, n - 1) + "…" : t);
+  const overall = {}; let tot = 0; for (const cm of comms) { const w = cm.posts_seen || 0; tot += w; for (const n of catNames) overall[n] = (overall[n] || 0) + (cm.category_mix[n] || 0) * w; }
+  for (const n of catNames) overall[n] /= tot || 1;
+  const box = $("#heat"); const bar = el("div", { class: "legend" }); const bShare = el("button", { class: "toggle", type: "button", "aria-pressed": "true", text: "Share of posts" }), bLift = el("button", { class: "toggle", type: "button", "aria-pressed": "false", text: "Compared with the average community" }); bar.append(bShare, bLift); box.append(bar);
+  const holder = el("div"), legend = el("div", { class: "legend" }); box.append(holder, legend);
+  let curMode = "lift", cell = null;
+  const cellPool = (cm, n) => (cm.children || [cm.id]).flatMap((i) => POOLS.posts.cells?.[`${i}|${n}`] || []);
+  const pickCell = (cm, n) => { cell = `${cm.id}|${n}`; draw(curMode); drawer("#heatD", `Random posts: ${cm.name} → ${n}`, [{ items: cellPool(cm, n), render: postEx }]); };
+  function draw(mode) {
+    curMode = mode; bShare.setAttribute("aria-pressed", String(mode === "share")); bLift.setAttribute("aria-pressed", String(mode === "lift"));
+    const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img" }); const steps = [0.02, 0.05, 0.1, 0.15, 0.25, 0.4];
+    const colShare = (v) => `var(--seq-${steps.filter((t) => v >= t).length})`;
+    const colLift = (r) => (r >= 2 ? "var(--div-pos-2)" : r >= 1.33 ? "var(--div-pos-1)" : r > 0.75 ? "var(--div-mid)" : r > 0.5 ? "var(--div-neg-1)" : "var(--div-neg-2)");
+    catNames.forEach((n, j) => svg.append(s("text", { x: 0, y: 0, class: "lbl", transform: `translate(${ml + j * cw + cw / 2 - 4},${mt - 8}) rotate(-50)` }, short(n, 20))));
+    hcomms.forEach((cm, i) => {
+      svg.append(s("text", { x: ml - 10, y: mt + i * rh + rh / 2 + 4, "text-anchor": "end", class: cm.isParent ? "lbl strong" : "lbl" }, short(cm.name, 27)));
+      catNames.forEach((n, j) => {
+        const v = cm.category_mix[n] || 0, r = overall[n] ? v / overall[n] : 1, g = s("g");
+        const fill = mode === "share" ? colShare(v) : colLift(r);
+        const isSel = cell === `${cm.id}|${n}`; g.setAttribute("class", "clickbar"); g.addEventListener("click", () => pickCell(cm, n));
+        g.addEventListener("keydown", (e) => { if (e.key === "Enter") pickCell(cm, n); });
+        g.append(s("rect", { x: ml + j * cw + 1, y: mt + i * rh + 1, width: cw - 2, height: rh - 2, rx: 3, fill, ...(isSel ? { stroke: "var(--text-primary)", "stroke-width": 2 } : {}) }));
+        const dark = mode === "share" ? v >= 0.25 : r >= 2 || r <= 0.5;
+        if ((mode === "share" && v >= 0.1) || (mode === "lift" && (r >= 2 || r <= 0.5) && v > 0.005)) g.append(s("text", { x: ml + j * cw + cw / 2, y: mt + i * rh + rh / 2 + 4, "text-anchor": "middle", style: `fill:${dark ? "#ffffff" : "var(--text-primary)"}` }, mode === "share" ? pct(v) : r.toFixed(1) + "×"));
+        hoverable(g, () => [[pct(v), "of this community's posts"], ["", `${r.toFixed(2)}× the average (${pct(overall[n])})`], ["", `${cm.name} → ${n}`]]);
+        svg.append(g);
+      });
+    });
+    holder.replaceChildren(svg);
+    const items = mode === "share" ? [["<2%", "var(--seq-0)"], ["2–5%", "var(--seq-1)"], ["5–10%", "var(--seq-2)"], ["10–15%", "var(--seq-3)"], ["15–25%", "var(--seq-4)"], ["25–40%", "var(--seq-5)"], ["40%+", "var(--seq-6)"]]
+      : [["half or less", "var(--div-neg-2)"], ["0.5–0.75×", "var(--div-neg-1)"], ["about average", "var(--div-mid)"], ["1.33–2×", "var(--div-pos-1)"], ["2× or more", "var(--div-pos-2)"]];
+    legend.replaceChildren(...items.map(([l, c]) => el("span", {}, [el("i", { style: `background:${c}` }), document.createTextNode(l)])));
+  }
+  if (dropped) box.append(el("p", { class: "note", text: `${dropped} smaller communities are left out because their sampled members posted fewer than ${MIN_POSTS} English posts.` }));
+  bShare.addEventListener("click", () => draw("share")); bLift.addEventListener("click", () => draw("lift"));
+  { let best = null, br = 0; for (const cm of hcomms) for (const n of catNames) { const v = cm.category_mix[n] || 0, r = overall[n] ? v / overall[n] : 0; if (v >= 0.05 && r > br && cellPool(cm, n).length) { br = r; best = [cm, n]; } } if (best) pickCell(...best); else draw("lift"); }
+  const t = el("table"); t.append(el("tr", {}, [el("th", { text: "Community" }), ...catNames.map((n) => el("th", { class: "num", text: n }))])); for (const cm of hcomms) t.append(el("tr", {}, [el("td", { text: cm.name }), ...catNames.map((n) => el("td", { class: "num", text: pct(cm.category_mix[n] || 0) }))])); $("#heatTable").append(t);
+}
+
+// ---------- Apps ----------
+{
+  const other = apps.filter(([k]) => k !== "Bluesky"); const t = el("table");
+  t.append(el("tr", {}, [el("th", { text: "App" }), el("th", { class: "num", text: "Records created" }), el("th", { class: "num", text: "Share of all records" })]));
+  t.append(el("tr", {}, [el("td", { text: "Bluesky (app.bsky, chat.bsky)" }), el("td", { class: "num", text: (apps.find(([k]) => k === "Bluesky") || [0, 0])[1].toLocaleString() }), el("td", { class: "num", text: pct(bskyShare, 2) })]));
+  const appRows = []; const pickApp = (k, tr) => { appRows.forEach((x) => x.setAttribute("aria-selected", String(x === tr))); drawer("#appsD", `${DATA.app_info?.[k]?.name || k}: ${DATA.app_info?.[k]?.about || "sample records"}`, [{ items: POOLS.apps?.[k], render: appEx }]); };
+  for (const [k, v] of other.slice(0, 15)) t.append((() => { const tr = el("tr", { class: "pick", tabindex: "0" }, [el("td", { text: DATA.app_info?.[k] ? `${DATA.app_info[k].name}: ${DATA.app_info[k].about}` : k }), el("td", { class: "num", text: v.toLocaleString() }), el("td", { class: "num", text: pct(v / appTotal, 3) })]); tr.addEventListener("click", () => pickApp(k, tr)); tr.addEventListener("keydown", (e) => { if (e.key === "Enter") pickApp(k, tr); }); appRows.push(tr); return tr; })());
+  if (appRows.length) pickApp(other[0][0], appRows[0]);
+  t.append(el("tr", {}, [el("td", { text: `${other.length - 15} other apps` }), el("td", { class: "num", text: other.slice(15).reduce((a, [, v]) => a + v, 0).toLocaleString() }), el("td", { class: "num", text: pct(other.slice(15).reduce((a, [, v]) => a + v, 0) / appTotal, 3) })]));
+  $("#apps").append(t, el("p", { class: "note", text: "Records created during 17 two-minute windows (every two hours over 34 hours), from Bluesky's Jetstream relay." }));
+}
+
+// ---------- Method ----------
+const method = [
+  "Posts: 17 two-minute slices, one every two hours over 34 hours (Oct 28–29, 2026), replayed from Bluesky's public Jetstream relay. 85,676 posts; this page's topic analysis uses the English ones.",
+  "Likes: every like in the same slices (550,864). A uniform random sample of 30,000 of them was used to fetch the liked posts, so each topic's share of likes is the share of likes, not of liked posts.",
+  "Like counts per post: fetched for every sampled post; the distribution uses posts at least 12 hours old so most of their likes have arrived.",
+  "Topics: posts embedded with model2vec (potion-base-32M) and clustered with k-means (60 clusters). Claude named each cluster and grouped them into categories from distinctive words and random examples. Some clusters group posts by tone (replies, venting) rather than subject.",
+  "Community hierarchy: the 20 communities' audience centroids were merged bottom-up (average linkage, cosine distance) into five audience groups, the cut most stable across disjoint half-samples of users (adjusted Rand index 0.54, versus 0.28 for 20 groups). Haiku then read each community's accounts and posts to judge political lean; those it marked left and political were placed under the Left politics umbrella, moving three communities out of their audience groups. Haiku named the groups.",
+  `Follow graph: the complete follow lists of ${G.sample_users.toLocaleString()} randomly chosen accounts that posted during the sample. The 2,500 accounts they follow most are 'core'; core accounts are grouped by audience overlap (SVD + k-means), mapped with t-SNE, and named by Claude from their handles and bios.`,
+  `English only: a post counts as English if its first language tag is English. ${pct(DATA.mislabelled_share)} of posts tagged English were clearly in other languages; topic clustering caught these and they are left out of the topic charts.`,
+  "An account counts as English if at least half its sampled posts are. Community detection itself used all sampled accounts; the posts describing each community are English.",
+  "Caveats: one news-heavy period (US midterms five days out, Patrick Stewart's death); active posters only, so lurkers are invisible; topic labels are machine-generated; all data is public.",
+];
+$("#method").append(...method.map((m) => el("li", { text: m })));
+
+// ---------- Pages: secondary analyses live on a backup page ----------
+{
+  const backup = [$("#compareSection"), $("#moreSection"), $("#topicsSection")], main = $("main"); const link = (href, text) => el("a", { href, text });
+  if (DATA.page === "topics") main.replaceChildren(el("h1", { text: "Backup analyses" }), el("p", { class: "note" }, [document.createTextNode("Set aside for now. All English, except that the follow-graph communities were found using accounts of every language. "), link("bluesky-map.html", "Back to the main page")]), ...backup, tip);
+  else { backup.forEach((x) => x.remove()); $("#backupLink").append(document.createTextNode("More analyses are on a "), link("bluesky-topics-backup.html", "backup page"), document.createTextNode(": how the most-liked accounts differ from everyone else, post formats, follow-graph communities and how they connect, and topics.")); }
+}
+</script>
+</body>
+</html>
