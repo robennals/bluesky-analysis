@@ -34,6 +34,7 @@ h2 { font-size: 21px; margin: 48px 0 6px; font-weight: 620; }
 h3 { font-size: 15px; margin: 0 0 4px; font-weight: 600; }
 p, li { color: var(--text-secondary); max-width: 760px; }
 .lede { font-size: 17px; color: var(--text-secondary); max-width: 820px; }
+.intro { max-width: 820px; } .intro p, .intro li { margin: 8px 0; } .intro ul { margin: 4px 0 8px; padding-left: 22px; }
 a { color: inherit; }
 .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
 
@@ -114,7 +115,17 @@ details > summary { cursor: pointer; color: var(--text-secondary); font-size: 13
 <body>
 <div class="viz-root"><main>
 <h1>What's on Bluesky</h1>
-<p class="lede" id="lede"></p>
+<p class="lede">Bluesky is the decentralised social network that has drawn the most attention, and the largest open one. It is also unusual among big social networks in that what happens there is public by design. Anyone can read the stream of posts, likes and follows as it happens, which makes it a rare chance to see how a social network actually works.</p>
+<div class="intro">
+<p><b>Why look at Bluesky?</b> On Facebook, Instagram, TikTok or X, outsiders mostly see what the companies choose to publish. Bluesky is built on an open protocol, so the posts, likes, reposts and follows are public data. This page uses that data to describe what people post there, what they like, and where attention goes.</p>
+<p><b>A description, not a verdict.</b> Nothing here is meant as a judgement of Bluesky or the people on it. Many of the patterns are probably not specific to Bluesky:</p>
+<ul>
+<li><b>Attention is concentrated.</b> A few accounts get most of the likes, as on other broadcast social media.</li>
+<li><b>Posts attacking the other side do well.</b> A study of Facebook and Twitter found the same thing (<a href="https://doi.org/10.1073/pnas.2024292118" target="_blank" rel="noopener">Rathje, Van Bavel and van der Linden, 2021</a>).</li>
+</ul>
+<p>What is specific to Bluesky is mainly <i>who</i> is there: which communities joined, and which side of politics they lean to. Because we can't see inside the closed networks, Bluesky is one of the few places where these patterns can be measured directly. That makes what we find here a clue to what may also be happening on networks we can't see into.</p>
+</div>
+<p class="note" id="lede"></p>
 <div class="kpis" id="kpis"></div>
 <p class="note">Everything below the language section is English: posts tagged English, and accounts where at least half their sampled posts are English. Every chart has something selected, with a random sample of real posts or accounts beneath it. Click to change the selection, or Reshuffle for a new draw. Images from posts with an adult label are hidden.</p>
 
@@ -291,7 +302,7 @@ function selectorDrawer(sel, labels, titleOf, itemsOf, render) {
 // ---------- Header ----------
 const G = DATA.graph, LD = DATA.like_dist;
 const apps = DATA.apps || []; const appTotal = apps.reduce((a, [, v]) => a + v, 0); const bskyShare = appTotal ? (apps.find(([k]) => k === "Bluesky") || [0, 0])[1] / appTotal : null;
-$("#lede").textContent = `A snapshot of Bluesky built from public data on ${DATA.generated.slice(0, 10)}: about 86,000 posts and 550,000 likes sampled across 34 hours, the follow lists of ${G.sample_users.toLocaleString()} randomly chosen active accounts, and an embedding model to group posts by topic. Bluesky is mostly conversation, US politics, fandom and art; the attention it generates is highly concentrated.`;
+$("#lede").textContent = `How this was made: a snapshot built from public data on ${DATA.generated.slice(0, 10)}, from about 86,000 posts and 550,000 likes sampled across 34 hours, 30-day like counts for a weighted sample of active accounts, and the follow lists of ${G.sample_users.toLocaleString()} randomly chosen active accounts. A model (Claude Haiku) tagged accounts and posts; every chart shows real examples so you can judge the tags yourself. Details are at the end of the page.`;
 const kpis = [
   ["Registered accounts", "47.3M", "bsky-search.jazco.io, Oct 29"],
   ["Accounts posting per day", "~600K", "about 1.3% of accounts"],
@@ -466,13 +477,13 @@ function cliqueChart(mode, ids) {
     const leftC = conc(mode === "top" ? parent.likes : parent.likes, mode === "top" ? kids.reduce((a, r) => a + (lkBy[r.name]?.like_share || 0), 0) : parent.vol);
     const artC = conc(named("Art and illustration").t, named("Art and illustration").r), adultC = conc(named("Adult sexual content").t, named("Adult sexual content").r);
     $$("text").textContent = mode === "top"
-      ? `The 1,000 accounts that received the most likes over 30 days: Bluesky's most influential accounts, not the ones that post the most. Posts by these accounts get about ${pct(C.top_share_of_all)} of all likes. They are mostly about left-wing politics: ${pct(parent.vol)} of these accounts, whose posts get ${pct(parent.likes)} of the likes on top-1,000 posts, nearly all of it US politics, and none is tagged right-wing. A model tagged each account with its main focus, judged from its bio, its most-liked posts and what it shares: for political accounts, which side they're on; for everyone else, their main topic.`
+      ? `1,000 of Bluesky's most-liked accounts over 30 days: its most influential accounts, not the ones that post the most. Posts by these accounts get about ${pct(C.top_share_of_all)} of all likes. (They are the most-liked accounts that turned up in our samples, so a few big accounts that were quiet while we sampled are missing; the true top 1,000 get an estimated ${pct(DATA.top_accounts.top_by_likes["1000"])}.) They are mostly about left-wing politics: ${pct(parent.vol)} of these accounts, whose posts get ${pct(parent.likes)} of the likes on top-1,000 posts, nearly all of it US politics, and none is tagged right-wing. A model tagged each account with its main focus, judged from its bio, its most-liked posts and what it shares: for political accounts, which side they're on; for everyone else, their main topic.`
       : `A random sample of ${LK.n_likes.toLocaleString()} likes on English posts, with each liked account tagged the same way. This is what people actually like, and it's a broader mix than what the top accounts post: left-wing politics is still the biggest single group at ${pct(parent.vol)} of likes, but art, adult content, entertainment and games together get more (about 47%). Comparing the two charts shows which topics are concentrated on a few influencers: about ${pct(leftC)} of likes on posts by left-wing political accounts go to posts by the top 1,000, against about ${pct(artC)} for art accounts and ${pct(adultC)} for adult-content accounts, whose likes are spread across many smaller accounts. Shares are accurate to about ±3 points.`;
     pairedBars(ids.chart, [parent, ...(leftOpen ? kids : []), ...others], pick, (r) => (mode === "top" ? `${r.c.accounts} accounts` : `${r.c.accounts} of ${LK.n_likes} sampled likes`), m.hover, true);
   }
   draw();
   $$("note").textContent = mode === "top"
-    ? "The top 1,000 are the most-liked of 1,500 accounts tagged; those 1,500 were chosen from likes in our 34 sampled minutes, so some accounts that are big over 30 days but quiet in those minutes are missing. Clicking a row lists its most-liked accounts in order, with their likes over 30 days. Image-only accounts were tagged from any text they had. Individual tags can be wrong; the shares are what to trust."
+    ? `"Top 1,000" on this page means these 1,000 accounts: the most-liked over 30 days of 1,500 accounts that received likes in our 34 sampled minutes. Accounts that are big over 30 days but were quiet in those minutes are missing; we estimate about ${Math.round(C.estimated_outside / 100) * 100} such accounts get more likes than the least-liked account here, so this set is drawn from roughly the top ${(Math.round((1000 + C.estimated_outside) / 100) * 100).toLocaleString()}. Clicking a row lists its most-liked accounts in order, with their likes over 30 days. Image-only accounts were tagged from any text they had. Individual tags can be wrong; the shares are what to trust.`
     : "Each row's blue bar is from the random likes; the orange bar repeats the top 1,000's share from the chart above, for comparison. Accounts were tagged from their bio, most-liked posts and what they share, not from the single liked post.";
 }
 
@@ -498,7 +509,7 @@ if (DATA.social_actions) {
   $("#saText").textContent = `What is each liked post doing socially? A model read each of the ${SA.n.toLocaleString()} randomly liked posts above, along with the thread it replies to and its image, and sorted it by what the poster is doing and what that signals about them. `
     + `Taking a side in a political or cultural fight is ${pct(g.us_vs_them.all)} of likes, and most of that is against the other side: ${pct(sub.outgroup.all)} of all likes mock, condemn or expose an outgroup, against ${pct(sub.rally.all)} rallying one's own side and ${pct(sub.police.all)} policing it. `
     + `Thoughtful analysis and non-political helping or teaching together get ${pct(helpful)}. Much of the rest is about belonging, showing creative work, jokes and sexual content. `
-    + `On posts by the 1,000 most-liked accounts the mix shifts: us-vs-them is ${pct(g.us_vs_them.top)} of their likes.`;
+    + `On posts by the top 1,000 accounts the mix shifts: us-vs-them is ${pct(g.us_vs_them.top)} of their likes.`;
   const A = SA.agreement;
   $("#saNote").textContent = `Labels are by Claude Haiku, which saw each post's text, image, quoted post and reply thread. On ${A.n} posts that were also labelled by hand, it agreed on the top-level group ${pct(A.group)} of the time. `
     + `Shares are accurate to about ±3 points overall; the top-1,000 bar rests on only ${SA.n_top} likes, so it is accurate to about ±${Math.round(196 * Math.sqrt(0.25 / SA.n_top))} points for large groups. Click a row for random liked posts with the model's reason for its label.`;
