@@ -2,7 +2,7 @@
 
 Looking at what is going on on Bluesky, using only public data.
 
-**The report** is a self-contained interactive page, [site/index.html](site/index.html). Download it and open it in a browser. Every chart has random samples of the real posts or accounts beside it. It covers:
+**The report** is live at **https://bluesky-analysis.vercel.app**. It is a self-contained interactive page, [site/index.html](site/index.html), which also works when downloaded and opened in a browser. Every chart has random samples of the real posts or accounts beside it. It covers:
 
 - **How big Bluesky is,** compared with other social networks and other open networks.
 - **Languages:** what share of posts and likes are in each.
@@ -12,7 +12,7 @@ Looking at what is going on on Bluesky, using only public data.
 - **What liked posts are doing:** whether each liked post attacks the other side, rallies its own, informs, shows creative work, builds belonging, entertains or is sexual.
 - **Beyond Bluesky:** other apps built on the same protocol.
 
-[site/more.html](site/more.html) holds analyses that didn't fit on the main page: how the most-liked accounts differ from everyone else, post formats, follow-graph communities and topic clusters.
+[site/more.html](site/more.html) (live at `/more`) holds analyses that didn't fit on the main page: how the most-liked accounts differ from everyone else, post formats, follow-graph communities and topic clusters.
 
 [notes/2026-10-29-bluesky-map.md](notes/2026-10-29-bluesky-map.md) is the running log of findings, methods and corrections, and [notes/2026-11-06-social-actions.md](notes/2026-11-06-social-actions.md) covers the social-action analysis.
 
@@ -33,3 +33,11 @@ python3 scripts/build_viz.py   # writes site/index.html and site/more.html
 
 To gather data from scratch you need Python 3 with `pip install -r requirements.txt`, Node 22 (for the Jetstream samplers in `scripts/*.mjs`), and the `claude` CLI for tagging. The page itself is built from `viz/template.html`.
 
+## Hosting
+
+The site is a Vercel project (`rob-ennals-projects/bluesky-analysis`) that serves the committed `site/` folder as it is, with no build step. `vercel.json` sets this up, and `.vercelignore` makes sure only `site/` is uploaded, never `data/`. To publish a rebuilt site:
+
+```bash
+vercel deploy          # a preview, to check
+vercel deploy --prod   # https://bluesky-analysis.vercel.app
+```

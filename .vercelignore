@@ -1,0 +1,4 @@
+# Upload only the built site. data/ holds about 12 GB of raw data and must never be uploaded.
+/*
+!site
+!vercel.json
