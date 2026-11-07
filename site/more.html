@@ -3,7 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>What's on Bluesky</title>
+<title>What's on Bluesky: an open look at a social network</title>
+<meta name="description" content="Bluesky's posts, likes and follows are public, so we can see what a social network is actually like: who gets the attention, what they talk about, what people like, and what liked posts are doing.">
+<meta property="og:title" content="What's on Bluesky: an open look at a social network">
+<meta property="og:description" content="Bluesky's data is public, so we can see what a social network is actually like: who gets the attention, what they talk about, and what people like.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Crect x='7' y='17' width='4' height='8' rx='1' fill='white'/%3E%3Crect x='14' y='11' width='4' height='14' rx='1' fill='white'/%3E%3Crect x='21' y='6' width='4' height='19' rx='1' fill='white'/%3E%3C/svg%3E">
 <style>
 .viz-root {
   color-scheme: light;
@@ -34,6 +40,9 @@ h2 { font-size: 21px; margin: 48px 0 6px; font-weight: 620; }
 h3 { font-size: 15px; margin: 0 0 4px; font-weight: 600; }
 p, li { color: var(--text-secondary); max-width: 760px; }
 .lede { font-size: 17px; color: var(--text-secondary); max-width: 820px; }
+.findings { max-width: 820px; background: var(--surface-1); border: 1px solid var(--grid); border-radius: 10px; padding: 14px 20px; margin: 18px 0 8px; }
+.findings h3 { margin: 0 0 6px; font-size: 15px; } .findings ul { margin: 0; padding-left: 20px; } .findings li { margin: 6px 0; } .findings a { color: inherit; }
+footer.site { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--grid); color: var(--text-muted); font-size: 13px; max-width: 820px; } footer.site a { color: inherit; }
 .intro { max-width: 820px; } .intro p, .intro li { margin: 8px 0; } .intro ul { margin: 4px 0 8px; padding-left: 22px; }
 a { color: inherit; }
 .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
@@ -48,6 +57,7 @@ a { color: inherit; }
 @media (max-width: 900px) { .viz-row { grid-template-columns: 1fr; } .viz-row > .drawer { contain: none; padding: 12px 0 0; border-left: 0; border-top: 1px solid var(--grid); } .drawer-inner { position: static; height: 420px; } }
 .hero-line { font-size: 19px; font-weight: 600; color: var(--text-primary); margin: 12px 0 8px; max-width: none; }
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 24px 0 8px; }
+@media (max-width: 760px) { .kpis { grid-template-columns: 1fr 1fr; } }
 .kpi .label { color: var(--text-secondary); font-size: 13px; }
 .kpi .value { font-size: 28px; font-weight: 620; margin-top: 2px; }
 .kpi .sub { color: var(--text-muted); font-size: 12px; }
@@ -125,11 +135,12 @@ details > summary { cursor: pointer; color: var(--text-secondary); font-size: 13
 </ul>
 <p>What is specific to Bluesky is mainly <i>who</i> is there: which communities joined, and which side of politics they lean to. Because we can't see inside the closed networks, Bluesky is one of the few places where these patterns can be measured directly. That makes what we find here a clue to what may also be happening on networks we can't see into.</p>
 </div>
+<div class="findings"><h3>What we found</h3><ul id="findings"></ul></div>
 <p class="note" id="lede"></p>
 <div class="kpis" id="kpis"></div>
 <p class="note">Everything below the language section is English: posts tagged English, and accounts where at least half their sampled posts are English. Every chart has something selected, with a random sample of real posts or accounts beneath it. Click to change the selection, or Reshuffle for a new draw. Images from posts with an adult label are hidden.</p>
 
-<h2>How big is Bluesky?</h2>
+<h2 id="size">How big is Bluesky?</h2>
 <p>Compared with other social networks. Bluesky is in blue, on a plain linear scale.</p>
 <div class="card viz-row"><div>
   <div class="chips" id="scaleToggle" role="group" aria-label="What to compare"></div>
@@ -138,14 +149,14 @@ details > summary { cursor: pointer; color: var(--text-secondary); font-size: 13
   <p class="note" id="scaleNote"></p>
 </div><div id="scaleD" class="drawer"></div></div>
 
-<h2>Languages</h2>
+<h2 id="languages">Languages</h2>
 <p id="langText"></p>
 <div class="card viz-row"><div>
   <div class="legend"><span><i style="background:var(--series-1)"></i>Share of posts</span><span><i style="background:var(--series-2)"></i>Share of likes</span></div>
   <div id="langChart"></div>
 </div><div id="langD" class="drawer"></div></div>
 
-<h2>Like all broadcast social media, a few accounts capture most of the attention</h2>
+<h2 id="attention">Like all broadcast social media, a few accounts capture most of the attention</h2>
 <p id="attIntro"></p>
 <div class="card viz-row"><div>
   <div class="chips" id="attToggle" role="group" aria-label="What to measure"></div>
@@ -183,7 +194,7 @@ details > summary { cursor: pointer; color: var(--text-secondary); font-size: 13
 </section>
 </section>
 
-<h2>Who the most influential accounts are, and what they talk about</h2>
+<h2 id="influential">Who the most influential accounts are, and what they talk about</h2>
 <p id="cliqueText"></p>
 <div class="card viz-row"><div>
   <div class="legend" id="cliqueLegend"></div>
@@ -191,7 +202,7 @@ details > summary { cursor: pointer; color: var(--text-secondary); font-size: 13
   <p class="note" id="cliqueNote"></p>
 </div><div id="cliqueD" class="drawer"></div></div>
 
-<h2>What people actually like</h2>
+<h2 id="liked">What people actually like</h2>
 <p id="rlText"></p>
 <div class="card viz-row"><div>
   <div class="legend" id="rlLegend"></div>
@@ -200,7 +211,7 @@ details > summary { cursor: pointer; color: var(--text-secondary); font-size: 13
 </div><div id="rlD" class="drawer"></div></div>
 
 <section id="saSection">
-<h2>What liked posts are doing</h2>
+<h2 id="actions">What liked posts are doing</h2>
 <p id="saText"></p>
 <div class="card viz-row"><div>
   <div class="legend" id="saLegend"></div>
@@ -237,13 +248,17 @@ details > summary { cursor: pointer; color: var(--text-secondary); font-size: 13
 <div class="card viz-row"><div><div id="heat"></div><details><summary>Show as a table</summary><div id="heatTable"></div></details></div><div id="heatD" class="drawer"></div></div>
 </section>
 
-<h2>Beyond Bluesky</h2>
+<h2 id="beyond">Beyond Bluesky</h2>
 <p>Bluesky runs on the AT Protocol, which other apps can write to. Almost all activity is still Bluesky itself.</p>
 <div class="card viz-row"><div id="apps"></div><div id="appsD" class="drawer"></div></div>
 
-<h2>How this was made</h2>
+<h2 id="method-h">How this was made</h2>
 <p id="backupLink" class="note"></p>
 <ul id="method"></ul>
+<footer class="site">
+<p>Made by Rob Ennals. The code and the method notes are on <a href="https://github.com/robennals/bluesky-analysis" target="_blank" rel="noopener">GitHub</a>. Data was collected from Bluesky's public data on October 28 to 29, 2026.</p>
+<p>Every post and account shown here was public on Bluesky when it was collected. Posts deleted since then may still appear. To ask for something to be removed, <a href="https://github.com/robennals/bluesky-analysis/issues" target="_blank" rel="noopener">open an issue on GitHub</a>.</p>
+</footer>
 <div id="tip" role="tooltip"></div>
 </main></div>
 <script>
@@ -669,23 +684,38 @@ if (DATA.flows && parents.length) {
 
 // ---------- Method ----------
 const method = [
-  "Posts: 17 two-minute slices, one every two hours over 34 hours (Oct 28–29, 2026), replayed from Bluesky's public Jetstream relay. 85,676 posts; this page's topic analysis uses the English ones.",
-  "Likes: every like in the same slices (550,864). A uniform random sample of 30,000 of them was used to fetch the liked posts, so each topic's share of likes is the share of likes, not of liked posts.",
-  "Like counts per post: fetched for every sampled post; the distribution uses posts at least 12 hours old so most of their likes have arrived.",
-  "Topics: posts embedded with model2vec (potion-base-32M) and clustered with k-means (60 clusters). Claude named each cluster and grouped them into categories from distinctive words and random examples. Some clusters group posts by tone (replies, venting) rather than subject.",
-  "Community hierarchy: the 20 communities' audience centroids were merged bottom-up (average linkage, cosine distance) into five audience groups, the cut most stable across disjoint half-samples of users (adjusted Rand index 0.54, versus 0.28 for 20 groups). Haiku then read each community's accounts and posts to judge political lean; those it marked left and political were placed under the Left politics umbrella, moving three communities out of their audience groups. Haiku named the groups.",
-  `Follow graph: the complete follow lists of ${G.sample_users.toLocaleString()} randomly chosen accounts that posted during the sample. The 2,500 accounts they follow most are 'core'; core accounts are grouped by audience overlap (SVD + k-means), mapped with t-SNE, and named by Claude from their handles and bios.`,
-  `English only: a post counts as English if its first language tag is English. ${pct(DATA.mislabelled_share)} of posts tagged English were clearly in other languages; topic clustering caught these and they are left out of the topic charts.`,
-  "An account counts as English if at least half its sampled posts are. Community detection itself used all sampled accounts; the posts describing each community are English.",
-  "Caveats: one news-heavy period (US midterms five days out, Patrick Stewart's death); active posters only, so lurkers are invisible; topic labels are machine-generated; all data is public.",
+  "Sampling: 17 two-minute slices, one every two hours over 34 hours (October 28 to 29, 2026), replayed from Bluesky's public Jetstream relay: 85,676 posts and 550,864 likes. Everything is public data; nothing needed a login.",
+  "Scale: other networks' figures come from company reports and outside estimates, with each source listed beside the chart. They count users in different ways, so small differences mean little.",
+  "Attention over 30 days: like counts for a weighted sample of 1,822 active English accounts, read from each account's own public data. The sample combines the 1,500 accounts that received the most likes in our slices with a random sample of everyone else, weighted to stand for about 112,000 active accounts.",
+  "Influential accounts: Claude Haiku tagged each of the 1,500 most-liked accounts from its bio, its most-liked posts and what it reposts. For political accounts it chose a side; for others, a main topic. Tags were spot-checked, and a few clear errors were corrected by hand.",
+  "What people like: 1,000 likes drawn at random from all likes on English posts; the liked accounts were tagged the same way.",
+  "What liked posts are doing: the categories came from 80 random liked posts read by hand. Claude Haiku then labelled 994 posts, looking at each post's text, image, quoted post and reply thread. It agreed with the hand labels on the top-level group about 79% of the time.",
+  "Other apps: every record written to the network in the sampled slices, grouped by the app that defines it.",
+  `English only: a post counts as English if its first language tag is English, and an account counts as English if at least half its sampled posts are. ${pct(DATA.mislabelled_share)} of posts tagged English were clearly in other languages.`,
+  "Caveats: one news-heavy period (US midterms five days away, Patrick Stewart's death); people who never post or like are invisible; all the labels are machine-made, so every chart shows real examples to judge them by.",
 ];
+{
+  const scale = (label, name) => DATA.scale.views.find((v) => v.label === label).rows.find((r) => r.name === name).v;
+  const halfA = DATA.account_likes.weighted.curve.find((p) => p[1] >= 0.5)[0], C = DATA.cliques, LK = DATA.like_cliques, SA = DATA.social_actions;
+  const isLeft = (n) => n.startsWith("US left") || n.endsWith(": left") || n === "Brazilian left" || n === "Anti-Israel, pro-Palestine";
+  const leftTop = C.cliques.filter((c) => isLeft(c.name)).reduce((a, c) => a + c.like_share, 0), leftAll = LK.cliques.filter((c) => isLeft(c.name)).reduce((a, c) => a + c.like_share, 0);
+  const sub = SA ? Object.fromEntries(SA.tree.flatMap((g) => g.subs.map((x) => [x.key, x]))) : {};
+  const items = [
+    ["size", `Bluesky is small next to the giants, at about ${scale("People per day", "Bluesky: opened the app")}M people a day against about 2 billion for Facebook, but it is by far the largest open network: about ${Math.round(scale("Open networks, per month", "Bluesky") / scale("Open networks, per month", "Fediverse, all software"))} times the size of the fediverse (Mastodon and similar).`],
+    ["attention", `As on other broadcast social media, attention is concentrated: half of all likes go to the top ${pct(halfA, 1)} of active accounts.`],
+    ["influential", `The most influential accounts are mostly about left-wing US politics: they get ${pct(leftTop)} of the likes that go to 1,000 of the most-liked accounts. None of them is tagged right-wing.`],
+    ["liked", `What people like overall is a broader mix. Left-wing politics is ${pct(leftAll)} of all likes; art, adult content, entertainment and games together get more.`],
+    ...(SA ? [["actions", `The most common thing liked posts do is criticise or mock the other side: ${pct(sub.outgroup.all)} of all likes, and ${pct(sub.outgroup.top)} of likes on the most-liked accounts' posts. Thoughtful analysis and helpful teaching get about ${pct(sub.analysis.all)} and ${pct(sub.help.all)}.`]] : []),
+  ];
+  $("#findings").append(...items.map(([id, t]) => el("li", {}, [document.createTextNode(t + " "), el("a", { href: "#" + id, text: "See the chart ↓" })])));
+}
 $("#method").append(...method.map((m) => el("li", { text: m })));
 
-// ---------- Pages: secondary analyses live on a backup page ----------
+// ---------- Pages: secondary analyses live on a second page ----------
 {
   const backup = [$("#compareSection"), $("#moreSection"), $("#topicsSection")], main = $("main"); const link = (href, text) => el("a", { href, text });
-  if (DATA.page === "topics") main.replaceChildren(el("h1", { text: "Backup analyses" }), el("p", { class: "note" }, [document.createTextNode("Set aside for now. All English, except that the follow-graph communities were found using accounts of every language. "), link("bluesky-map.html", "Back to the main page")]), ...backup, tip);
-  else { backup.forEach((x) => x.remove()); $("#backupLink").append(document.createTextNode("More analyses are on a "), link("bluesky-topics-backup.html", "backup page"), document.createTextNode(": how the most-liked accounts differ from everyone else, post formats, follow-graph communities and how they connect, and topics.")); }
+  if (DATA.page === "topics") main.replaceChildren(el("h1", { text: "More about what's on Bluesky" }), el("p", { class: "note" }, [document.createTextNode("Analyses that didn't fit on the main page: how the most-liked accounts differ from everyone else, post formats, the communities in the follow graph, and topics. All English, except that the follow-graph communities were found using accounts of every language. "), link("index.html", "Back to the main page")]), ...backup, $("footer.site"), tip);
+  else { backup.forEach((x) => x.remove()); $("#backupLink").append(document.createTextNode("More analyses are on a "), link("more.html", "second page"), document.createTextNode(": how the most-liked accounts differ from everyone else, post formats, follow-graph communities and how they connect, and topics.")); }
 }
 </script>
 </body>

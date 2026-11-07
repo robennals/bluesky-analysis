@@ -1,4 +1,4 @@
-"""Inline data/viz-data.json into viz/template.html -> notes/bluesky-map.html (a single self-contained file)."""
+"""Inline the analysis data into viz/template.html, giving the two self-contained pages of the site: site/index.html and site/more.html."""
 import json, os
 R = os.path.join(os.path.dirname(__file__), "..")
 data = json.load(open(f"{R}/data/viz-data.json"))
@@ -38,7 +38,7 @@ def for_page(page):
         d["attention"]["pools"] = {}; d["points"] = []
     else:
         d["pools"]["posts"] = {k: posts[k] for k in ("clusters", "formats", "communities", "cells")}; d["pools"]["apps"] = {}
-        for c in d["pools"]["posts"]["clusters"].values():   # keep the backup page small enough to preview
+        for c in d["pools"]["posts"]["clusters"].values():   # keep the second page small enough to preview
             for k in c: c[k] = c[k][:12]
         d["points"] = [{**p, "x": round(p["x"], 1), "y": round(p["y"], 1)} for p in d["points"]]
         for c in d["cliques"]["cliques"] + d["like_cliques"]["cliques"]: c["sample"] = []
@@ -46,7 +46,8 @@ def for_page(page):
     return d
 
 # One template, two pages. Escape '</' so post text can never close the script tag.
-for page, name in (("main", "bluesky-map.html"), ("topics", "bluesky-topics-backup.html")):
+os.makedirs(f"{R}/site", exist_ok=True)
+for page, name in (("main", "index.html"), ("topics", "more.html")):
     blob = json.dumps(for_page(page), separators=(",", ":")).replace("</", "<\\/")
-    open(f"{R}/notes/{name}", "w").write(html.replace("/*DATA*/null", blob))
-    print(f"wrote notes/{name} ({os.path.getsize(f'{R}/notes/{name}')//1024} KB)")
+    open(f"{R}/site/{name}", "w").write(html.replace("/*DATA*/null", blob))
+    print(f"wrote site/{name} ({os.path.getsize(f'{R}/site/{name}')//1024} KB)")
