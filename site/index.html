@@ -698,12 +698,12 @@ const method = [
   const scale = (label, name) => DATA.scale.views.find((v) => v.label === label).rows.find((r) => r.name === name).v;
   const halfA = DATA.account_likes.weighted.curve.find((p) => p[1] >= 0.5)[0], C = DATA.cliques, LK = DATA.like_cliques, SA = DATA.social_actions;
   const isLeft = (n) => n.startsWith("US left") || n.endsWith(": left") || n === "Brazilian left" || n === "Anti-Israel, pro-Palestine";
-  const leftTop = C.cliques.filter((c) => isLeft(c.name)).reduce((a, c) => a + c.like_share, 0), leftAll = LK.cliques.filter((c) => isLeft(c.name)).reduce((a, c) => a + c.like_share, 0);
+  const leftAcc = C.cliques.filter((c) => isLeft(c.name)).reduce((a, c) => a + c.account_share, 0), leftTop = C.cliques.filter((c) => isLeft(c.name)).reduce((a, c) => a + c.like_share, 0), leftAll = LK.cliques.filter((c) => isLeft(c.name)).reduce((a, c) => a + c.like_share, 0);
   const sub = SA ? Object.fromEntries(SA.tree.flatMap((g) => g.subs.map((x) => [x.key, x]))) : {};
   const items = [
     ["size", `Bluesky is small next to the giants, at about ${scale("People per day", "Bluesky: opened the app")}M people a day against about 2 billion for Facebook, but it is by far the largest open network: about ${Math.round(scale("Open networks, per month", "Bluesky") / scale("Open networks, per month", "Fediverse, all software"))} times the size of the fediverse (Mastodon and similar).`],
     ["attention", `As on other broadcast social media, attention is concentrated: half of all likes go to the top ${pct(halfA, 1)} of active accounts.`],
-    ["influential", `The most influential accounts are mostly about left-wing US politics: they get ${pct(leftTop)} of the likes that go to the 1,000 most-liked accounts in our October 28 to 29 sample. None of them is tagged right-wing.`],
+    ["influential", `Of the 1,000 most-liked accounts in our October 28 to 29 sample, ${pct(leftAcc)} are mainly about left-wing politics, nearly all of it US politics. Weighted by likes it is higher still: those accounts get ${pct(leftTop)} of the likes that go to the 1,000. None of the 1,000 is tagged right-wing.`],
     ["liked", `What people like overall is a broader mix. Left-wing politics is ${pct(leftAll)} of all likes; art, adult content, entertainment and games together get more.`],
     ...(SA ? [["actions", `The most common thing liked posts do is criticise or mock the other side: ${pct(sub.outgroup.all)} of all likes, and ${pct(sub.outgroup.top)} of likes on posts by those 1,000 accounts. Thoughtful analysis and helpful teaching get about ${pct(sub.analysis.all)} and ${pct(sub.help.all)}.`]] : []),
   ];
