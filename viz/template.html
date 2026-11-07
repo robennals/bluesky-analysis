@@ -188,6 +188,16 @@ details > summary { cursor: pointer; color: var(--text-secondary); font-size: 13
   <p class="note" id="rlNote"></p>
 </div><div id="rlD" class="drawer"></div></div>
 
+<section id="saSection">
+<h2>What liked posts are doing</h2>
+<p id="saText"></p>
+<div class="card viz-row"><div>
+  <div class="legend" id="saLegend"></div>
+  <div id="saChart"></div>
+  <p class="note" id="saNote"></p>
+</div><div id="saD" class="drawer"></div></div>
+</section>
+
 <section id="moreSection">
 <h2>What format posts take</h2>
 <p id="fmtText"></p>
@@ -375,7 +385,8 @@ function pairedBars(target, rows, onPick, descOf = (r) => catDesc[r.name], label
   const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img" }); const hits = [];
   const choose = (i) => { hits.forEach((h, j) => h.setAttribute("fill", j === i ? "var(--grid)" : "transparent")); onPick(rows[i]); };
   // A group block behind a parent row and its children, so they read as one thing.
-  if (tree) { const first = rows.findIndex((r) => r.toggle); const kids = rows.filter((r) => r.child).length; svg.append(s("rect", { x: 0, y: m.t + first * rowH, width: W, height: (kids + 1) * rowH, rx: 6, fill: "var(--page)", stroke: "var(--grid)" })); if (kids) svg.append(s("line", { x1: 15, x2: 15, y1: m.t + (first + 1) * rowH, y2: m.t + (first + kids + 0.5) * rowH, stroke: "var(--axis)" })); }
+  if (tree) rows.forEach((r, first) => { if (!r.toggle) return; let kids = 0; while (rows[first + 1 + kids]?.child) kids++;
+    svg.append(s("rect", { x: 0, y: m.t + first * rowH, width: W, height: (kids + 1) * rowH, rx: 6, fill: "var(--page)", stroke: "var(--grid)" })); if (kids) svg.append(s("line", { x1: 15, x2: 15, y1: m.t + (first + 1) * rowH, y2: m.t + (first + kids + 0.5) * rowH, stroke: "var(--axis)" })); });
   for (const t of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8].filter((t) => t <= max + 1e-9)) { svg.append(s("line", { x1: X(t), x2: X(t), y1: m.t, y2: H - m.b, stroke: t ? "var(--grid)" : "var(--axis)" })); svg.append(s("text", { x: X(t), y: H - 6, "text-anchor": "middle" }, pct(t))); }
   rows.forEach((r, i) => {
     const y = m.t + i * rowH, g = s("g", onPick ? { class: "cat-row", role: "button", "aria-label": r.name } : { "aria-label": r.name });
@@ -467,6 +478,32 @@ function cliqueChart(mode, ids) {
 
 if (DATA.cliques) cliqueChart("top", { d: "#cliqueD", legend: "#cliqueLegend", text: "#cliqueText", chart: "#cliqueChart", note: "#cliqueNote" });
 if (DATA.cliques && DATA.like_cliques) cliqueChart("random", { d: "#rlD", legend: "#rlLegend", text: "#rlText", chart: "#rlChart", note: "#rlNote" });
+
+// ---------- What liked posts are doing ----------
+if (DATA.social_actions) {
+  const SA = DATA.social_actions, open = new Set([SA.tree[0].key]);
+  const saEx = (p) => { const d = postEx(p); d.append(el("div", { class: "tag", text: `Why this label: ${p.why}${p.top ? " · author is a top-1,000 account" : ""}` })); return d; };
+  // A group's samples are drawn from its sub-categories in proportion to their shares, so the mix matches the bar.
+  const mix = (subs) => { const tot = subs.reduce((a, x) => a + x.all, 0) || 1; return subs.flatMap((x) => shuffled(x.sample).slice(0, Math.max(1, Math.round((x.all / tot) * 30)))); };
+  const pick = (r) => drawer("#saD", `Random liked posts: ${r.name} (${pct(r.vol)} of likes)`, [{ items: r.subs ? mix(r.subs) : r.sample, render: saEx }]);
+  const draw = () => {
+    const rows = SA.tree.flatMap((g) => { const many = g.subs.length > 1;
+      const parent = { name: g.name, vol: g.all, likes: g.top, desc: g.desc, subs: g.subs, ...(many ? { open: open.has(g.key), toggle: () => { open.has(g.key) ? open.delete(g.key) : open.add(g.key); draw(); } } : {}) };
+      return [parent, ...(many && open.has(g.key) ? g.subs.map((x) => ({ name: x.name, vol: x.all, likes: x.top, desc: x.desc, sample: x.sample, child: true })) : [])]; });
+    pairedBars("#saChart", rows, pick, (r) => r.desc, ["of likes on posts by the top 1,000", "of all likes"], true);
+  };
+  $("#saLegend").replaceChildren(el("span", {}, [el("i", { style: "background:var(--series-1)" }), document.createTextNode("Share of all likes (random sample)")]), el("span", {}, [el("i", { style: "background:var(--series-2)" }), document.createTextNode("Share of likes on posts by the top 1,000 accounts")]));
+  const g = Object.fromEntries(SA.tree.map((x) => [x.key, x])), sub = Object.fromEntries(SA.tree.flatMap((x) => x.subs.map((y) => [y.key, y])));
+  const helpful = sub.analysis.all + sub.help.all;
+  $("#saText").textContent = `What is each liked post doing socially? A model read each of the ${SA.n.toLocaleString()} randomly liked posts above, along with the thread it replies to and its image, and sorted it by what the poster is doing and what that signals about them. `
+    + `Taking a side in a political or cultural fight is ${pct(g.us_vs_them.all)} of likes, and most of that is against the other side: ${pct(sub.outgroup.all)} of all likes mock, condemn or expose an outgroup, against ${pct(sub.rally.all)} rallying one's own side and ${pct(sub.police.all)} policing it. `
+    + `Thoughtful analysis and non-political helping or teaching together get ${pct(helpful)}. Much of the rest is about belonging, showing creative work, jokes and sexual content. `
+    + `On posts by the 1,000 most-liked accounts the mix shifts: us-vs-them is ${pct(g.us_vs_them.top)} of their likes.`;
+  const A = SA.agreement;
+  $("#saNote").textContent = `Labels are by Claude Haiku, which saw each post's text, image, quoted post and reply thread. On ${A.n} posts that were also labelled by hand, it agreed on the top-level group ${pct(A.group)} of the time. `
+    + `Shares are accurate to about ±3 points overall; the top-1,000 bar rests on only ${SA.n_top} likes, so it is accurate to about ±${Math.round(196 * Math.sqrt(0.25 / SA.n_top))} points for large groups. Click a row for random liked posts with the model's reason for its label.`;
+  draw();
+}
 
 // ---------- Scale ----------
 {

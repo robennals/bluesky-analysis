@@ -2,7 +2,7 @@
 import json, os
 R = os.path.join(os.path.dirname(__file__), "..")
 data = json.load(open(f"{R}/data/viz-data.json"))
-for key, name in (("formats", "formats.json"), ("account_likes", "account-likes-summary.json"), ("hierarchy", "hierarchy-labels.json"), ("pools", "sample-pools.json"), ("flows", "group-flows.json"), ("top_accounts", "top-accounts.json"), ("attention", "attention.json"), ("cliques", "cliques.json"), ("like_cliques", "like-sample-cliques.json")):
+for key, name in (("formats", "formats.json"), ("account_likes", "account-likes-summary.json"), ("hierarchy", "hierarchy-labels.json"), ("pools", "sample-pools.json"), ("flows", "group-flows.json"), ("top_accounts", "top-accounts.json"), ("attention", "attention.json"), ("cliques", "cliques.json"), ("like_cliques", "like-sample-cliques.json"), ("social_actions", "social-actions.json")):
     path = f"{R}/data/{name}"
     data[key] = json.load(open(path)) if os.path.exists(path) else None
 data["scale"] = json.load(open(f"{R}/viz/scale.json"))
@@ -42,6 +42,7 @@ def for_page(page):
             for k in c: c[k] = c[k][:12]
         d["points"] = [{**p, "x": round(p["x"], 1), "y": round(p["y"], 1)} for p in d["points"]]
         for c in d["cliques"]["cliques"] + d["like_cliques"]["cliques"]: c["sample"] = []
+        d["social_actions"] = None
     return d
 
 # One template, two pages. Escape '</' so post text can never close the script tag.
