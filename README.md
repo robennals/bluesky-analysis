@@ -2,7 +2,7 @@
 
 Looking at what is going on on Bluesky, using only public data.
 
-**The report** is live at **https://bluesky-analysis.vercel.app**. It is a self-contained interactive page, [site/index.html](site/index.html), which also works when downloaded and opened in a browser. Every chart has random samples of the real posts or accounts beside it. It covers:
+**The report** is live at **https://whatsky.robennals.org**. It is a self-contained interactive page, [site/index.html](site/index.html), which also works when downloaded and opened in a browser. Every chart has random samples of the real posts or accounts beside it. It covers:
 
 - **How big Bluesky is,** compared with other social networks and other open networks.
 - **Languages:** what share of posts and likes are in each.
@@ -35,9 +35,9 @@ To gather data from scratch you need Python 3 with `pip install -r requirements.
 
 ## Hosting
 
-The site is a Vercel project (`rob-ennals-projects/bluesky-analysis`) that serves the committed `site/` folder as it is, with no build step. `vercel.json` sets this up, and `.vercelignore` makes sure only `site/` is uploaded, never `data/`. To publish a rebuilt site:
+The site is a Vercel project (`rob-ennals-projects/bluesky-analysis`) at https://whatsky.robennals.org (a subdomain of robennals.org, whose DNS Vercel runs). It serves the committed `site/` folder as it is, with no build step. `vercel.json` sets this up, and `.vercelignore` makes sure only `site/` is uploaded, never `data/`. To publish a rebuilt site:
 
 ```bash
 vercel deploy          # a preview, to check
-vercel deploy --prod   # https://bluesky-analysis.vercel.app
+vercel deploy --prod   # https://whatsky.robennals.org
 ```
