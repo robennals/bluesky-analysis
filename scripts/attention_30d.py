@@ -93,6 +93,7 @@ for g in [TOP01] + GROUPS: print(g, json.dumps({k: round(v, 3) for k, v in out["
 # cliques among the top 1,000 by 30-day likes
 tags = {a["did"]: a for a in json.load(open("data/top-accounts-tags.json")) if a.get("category")}
 top = [r for r in rows if r["stratum"] == "head" and r["did"] in tags][:1000]
+json.dump([r["did"] for r in top], open("data/top1000-dids.json", "w"))   # for splitting other samples by whether the author is a top account
 outside = sum(r["w"] for r in rows if r["stratum"] == "tail" and r["likes"] >= top[-1]["likes"])
 tot = sum(r["likes"] for r in top); byc = defaultdict(list)
 for r in top: byc[tags[r["did"]]["category"]].append(r)
