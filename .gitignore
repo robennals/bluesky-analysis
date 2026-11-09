@@ -5,3 +5,7 @@ __pycache__/
 .vercel
 # vercel link writes a token to .env.local
 .env*
+# Working dumps of sampled posts from the clustering scripts; mostly copies of public posts, so not published
+notes/accounts-raw.*
+notes/clusters-raw.*
+notes/clusters-long.*
